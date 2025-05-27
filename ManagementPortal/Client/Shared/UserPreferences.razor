@@ -1,0 +1,66 @@
+﻿@using System.Globalization
+
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@inject Themes.CustomThemeProvider CustomThemeProvider
+@inject IStringLocalizer<AppLocalization> Loc
+
+<MudThemeProvider @bind-IsDarkMode="CustomThemeProvider.IsDarkMode" Theme="CustomThemeProvider.CustomTheme" />
+
+<MudStack>
+    <MudMenu Icon="@Icons.Material.Filled.Settings"
+             AriaLabel="Open user menu">
+        <MudSelect T="CultureInfo"
+                   Value="@_selectedCulture"
+                   ValueChanged="OnCultureChanged"
+                   Underline="false"
+                   Dense="true"
+                   Variant="Variant.Text">
+            @foreach (var culture in supportedCultures)
+            {
+                <MudSelectItem Value="@culture" Class="d-flex justify-center">
+                    <MudStack Row="true" Justify="Justify.Center" AlignItems="AlignItems.Center">
+                        <img Src="@($"{culture.DisplayName}-icon.png")" height="25" Class="mr-1" />
+                        @culture.DisplayName
+                    </MudStack>
+                </MudSelectItem>
+            }
+        </MudSelect>
+        <MudSwitch Class="ml-4 mt-4"
+                   @bind-Value="CustomThemeProvider.IsDarkMode"
+                   Color="Color.Warning"
+                   UncheckedColor="Color.Default"
+                   ThumbIcon="@Icons.Material.Filled.ModeNight"
+                   Size="Size.Medium">
+            <MudText>@Loc["darkMode"]</MudText>
+        </MudSwitch>
+    </MudMenu>
+</MudStack>
+
+@code
+{
+    private CultureInfo[] supportedCultures = new[]
+    {
+        new CultureInfo("en-US"),
+        new CultureInfo("pt-BR"),
+        new CultureInfo("es-ES"),
+    };
+
+    private CultureInfo? _selectedCulture;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var savedCulture = await JS.InvokeAsync<string>("blazorCulture.get");
+        _selectedCulture = string.IsNullOrEmpty(savedCulture) ? CultureInfo.CurrentCulture : new CultureInfo(savedCulture);
+    }
+
+    private async Task OnCultureChanged(CultureInfo newCulture)
+    {
+        if (_selectedCulture != null && _selectedCulture.Name != newCulture.Name)
+        {
+            _selectedCulture = newCulture;
+            await JS.InvokeVoidAsync("blazorCulture.set", _selectedCulture.Name);
+            Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+        }
+    }
+}

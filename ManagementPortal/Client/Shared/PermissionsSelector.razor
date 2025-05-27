@@ -1,0 +1,439 @@
+﻿@using MudBlazor
+@using Dialogs
+@using ManagementPortal.Shared.Dtos
+@using ManagementPortal.Shared.Constants
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IHttpClientFactory HttpClientFactory
+@inject IDialogService DialogService
+@implements IDisposable
+@inject IJSRuntime JSRuntime
+@inject IStringLocalizer<AppLocalization> Loc
+
+<AuthorizeView Roles="EditRole,CreateRole">
+    <Authorized>
+        <MudGrid>
+            <MudItem lg="3" md="3" sm="4">
+                <MudTextField T="string"
+                              Disabled="Disable"
+                              Margin="Margin.Dense"
+                              Class="my-0"
+                              Immediate="true"
+                              ValueChanged="@((t) => SearchPermission(t))"
+                              HelperText=@Loc["selectPermission"]
+                              Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
+                              Variant="Variant.Outlined">
+                </MudTextField>
+                <div @onscroll="OnScroll"
+                     style="height: 50vh; overflow-y: @(Disable ? "hidden" : "auto");"
+                     id="@IdScroll">
+                    @if (_loading)
+                    {
+                        foreach (var i in Enumerable.Range(1, 5))
+                        {
+                            <MudSkeleton Animation="Animation.Pulse" Height="40px" Class="mx-8 py-2" />
+                        }
+                    }
+                    else
+                    {
+                        <MudCheckBox Disabled="Disable" T="bool?"
+                                     Value="_selectAll" Size="Size.Small"
+                                     ValueChanged="SelectAllItems"
+                                     Label=@Loc["selectAll"] />
+                        @foreach (var permission in _permissionsFiltered)
+                        {
+                            <MudCheckBox Disabled="Disable" Size="Size.Small"
+                                         @bind-Value="@permission.IsSelected"
+                                         Label="@permission.Permission.Name" />
+                        }
+                    }
+                    @if (_loadingScroll)
+                    {
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                    }
+                </div>
+            </MudItem>
+            <MudItem lg="2" md="2" sm="3">
+                <MudText> @Loc["selectByGroup"]</MudText><br />
+                <MudButton Disabled="Disable" OnClick='@( () => SelectPermissionsByGroup("Create") )'><MudIcon Icon="@GetButtonIcon("Create")" /> @Loc["create"]</MudButton><br />
+                <MudButton Disabled="Disable" OnClick='@( () => SelectPermissionsByGroup("List") )'> <MudIcon Icon="@GetButtonIcon("List")" /> @Loc["list"]</MudButton><br />
+                <MudButton Disabled="Disable" OnClick='@( () => SelectPermissionsByGroup("Edit") )'> <MudIcon Icon="@GetButtonIcon("Edit")" /> @Loc["edit"]</MudButton><br />
+                <MudButton Disabled="Disable" OnClick='@( () => SelectPermissionsByGroup("Delete") )'> <MudIcon Icon="@GetButtonIcon("Delete")" /> @Loc["delete"]</MudButton><br />
+                <MudButton Disabled="Disable" OnClick='@( () => SelectPermissionsByGroup("Messaging") )'> <MudIcon Icon="@GetButtonIcon("Messaging")" /> @Loc["messaging"]</MudButton><br />
+            </MudItem>
+            <MudItem lg="7" md="7" sm="5">
+                <MudPaper Outlined="true"
+                          Class="border-dashed pa-4 overflow-y-auto mud-height-full" Style="height:60vh;">
+                    <MudStack Wrap="Wrap.Wrap" Row Spacing="1"
+                              AlignItems="AlignItems.Start">
+                        @foreach (var permission in _permissions.Where(p => p.IsSelected))
+                        {
+                            if (Disable)
+                            {
+                                <MudChip T="string" Color="Color.Success">@permission.Permission.Name</MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Color="Color.Default"
+                                         OnClose="@(() => RemovePermission(permission.Permission.Id))">
+                                    @permission.Permission.Name
+                                </MudChip>
+                            }
+                        }
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    [Parameter]
+    public EventCallback<List<ApplicationPermissionDto>> PermissionsSend { get; set; }
+
+    [Parameter]
+    public List<ApplicationPermissionDto> InitialPermissions { get; set; } = new();
+
+    [Parameter]
+    public Products Product { get; set; }
+
+    [Parameter]
+    public bool Disable { get; set; } = false;
+
+    public class PermissionSelection
+    {
+        public ApplicationPermissionDto Permission { get; set; }
+        private bool isSelected;
+
+        public bool IsSelected
+        {
+            get => isSelected;
+            set
+            {
+                if (isSelected != value)
+                {
+                    isSelected = value;
+                    SelectionChanged?.Invoke(this);
+                }
+            }
+        }
+
+        public event Func<PermissionSelection, Task>? SelectionChanged;
+
+        public PermissionSelection(ApplicationPermissionDto permission, bool isSelected)
+        {
+            Permission = permission;
+            IsSelected = isSelected;
+        }
+    }
+
+    private DotNetObjectReference<PermissionsSelector>? objRef;
+    private IHttpClientFactory? _httpClientFactory;
+    private ConfirmActionDialog _confirmActionDialog = new();
+    private List<PermissionSelection> _permissions = new();
+    private List<PermissionSelection> _permissionsFiltered = new();
+
+    private string _searchText = string.Empty;
+    private string IdScroll = string.Empty;
+    private int _permissionsCount = 0;
+    private int _pageCount = 1;
+    private int _pageSize = 10;
+    private bool? _selectAll { get; set; } = false;
+    private bool _loading { get; set; } = true;
+    private bool _loadingScroll { get; set; } = false;
+    private bool _loadData { get; set; } = true;
+
+    private Dictionary<string, bool> _isDeleting = new Dictionary<string, bool>
+{
+    { "Create", false },
+    { "List", false },
+    { "Edit", false },
+    { "Delete", false } ,
+    { "Messaging", false }
+};
+    private Dictionary<string, bool> _hasSelectedPermission = new Dictionary<string, bool>
+{
+    { "Create", false },
+    { "List", false },
+    { "Edit", false },
+    { "Delete", false },
+    { "Messaging", false }
+};
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        IdScroll = "IdScroll";
+        objRef = DotNetObjectReference.Create(this);
+
+        await LoadData();
+
+        if (_permissionsFiltered.Count(p => p.IsSelected) > 0)
+        {
+            if (_permissionsFiltered.Count() != _permissionsFiltered.Count(p => p.IsSelected))
+            {
+                _selectAll = null;
+            }
+            else
+            {
+                _selectAll = true;
+            }
+        }
+        _loading = false;
+    }
+
+    private async Task OnSelectionChanged(PermissionSelection? permissionSelection = null)
+    {
+        if (_permissionsFiltered.Count(p => p.IsSelected) > 0)
+        {
+            if (_permissionsFiltered.Count() != _permissionsFiltered.Count(p => p.IsSelected))
+            {
+                _selectAll = null;
+            }
+            else
+            {
+                _selectAll = true;
+            }
+        }
+        else
+        {
+            _selectAll = false;
+        }
+
+        await PermissionsSend.InvokeAsync(_permissions.Where(p => p.IsSelected).Select(p => p.Permission).ToList());
+    }
+
+    private async Task LoadData()
+    {
+        IHttpClientFactory httpClientFactory = HttpClientFactory;
+        _httpClientFactory = httpClientFactory;
+
+        var client = httpClientFactory.CreateClient("CustomHttpClient");
+        var response = await client.GetAsync($"api/Permissions/?product={Product}&currentPage={1}&pageSize={_pageSize}");
+
+        if (response.IsSuccessStatusCode)
+        {
+            var permissionPagination = await response.Content.ReadFromJsonAsync<PermissionPagination>();
+
+            if (permissionPagination?.Permissions != null)
+            {
+                var initialPemissions = InitialPermissions.Select(p => new PermissionSelection(p, true)).ToList();
+                _permissions = initialPemissions;
+
+                var updatedPermissions = permissionPagination.Permissions
+                    .Select(p =>
+                        InitialPermissions.Any(ip => ip.Id == p.Id)
+                        ? new PermissionSelection(p, true)
+                        : new PermissionSelection(p, false)
+                    )
+                    .ToList();
+
+                _permissions = _permissions
+                    .Concat(updatedPermissions.Where(up => !_permissions.Any(p => p.Permission.Id == up.Permission.Id)))
+                    .ToList();
+
+                _permissionsFiltered = _permissions;
+
+                foreach (var permission in _permissionsFiltered)
+                {
+                    permission.SelectionChanged += async (p) => await OnSelectionChanged(p);
+                }
+
+                _permissionsCount = permissionPagination.TotalItems;
+            }
+        }
+    }
+
+    private async Task SelectAllItems(bool? value)
+    {
+        _selectAll = value == true;
+
+        if (_selectAll == true)
+        {
+            _loadingScroll = true;
+            _pageSize = int.MaxValue;
+            await LoadData();
+            _loadingScroll = false;
+        }
+
+        foreach (var permission in _permissionsFiltered)
+        {
+            permission.IsSelected = value == true;
+        }
+    }
+
+    private async Task OnScroll()
+    {
+        await JSRuntime.InvokeAsync<string>("handleScroll", objRef, IdScroll);
+    }
+
+    [JSInvokable]
+    public async Task LoadMoreData()
+    {
+
+        if (_pageCount < (int)Math.Ceiling((decimal)(_permissionsCount) / 10))
+        {
+            _pageCount++;
+            var client = _httpClientFactory?.CreateClient("CustomHttpClient");
+
+            if (client != null)
+            {
+                _loadingScroll = true;
+                string url = _searchText.Equals(string.Empty)
+                    ? $"api/Permissions/?Product={Product}&CurrentPage={_pageCount}&PageSize=10"
+                    : $"api/Permissions/?Product={Product}&CurrentPage={_pageCount}&PageSize=10&SearchText={_searchText}";
+
+                var response = await client.GetAsync(url);
+                _loadingScroll = false;
+                if (response.IsSuccessStatusCode)
+                {
+                    var permissionPagination = await response.Content.ReadFromJsonAsync<PermissionPagination>();
+                    if (permissionPagination?.Permissions != null)
+                    {
+                        _permissionsCount = permissionPagination.TotalItems;
+                        var updatedPermissions = permissionPagination.Permissions
+                            .Select(p =>
+                                InitialPermissions.Any(ip => ip.Id == p.Id)
+                                ? new PermissionSelection(p, true)
+                                : new PermissionSelection(p, false)
+                            )
+                            .ToList();
+
+                        if (updatedPermissions != null)
+                        {
+                            _permissions = _permissions
+                                .Concat(
+                                    updatedPermissions
+                                        .Where(
+                                            up => !_permissions.Any(p => p.Permission.Id == up.Permission.Id)
+                                        )
+                                )
+                                .ToList();
+
+                            _permissionsFiltered = _permissions;
+
+                            foreach (var permission in _permissionsFiltered)
+                            {
+                                permission.SelectionChanged += async (p) => await OnSelectionChanged(p);
+                            }
+
+                            StateHasChanged();
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+
+    private async Task SearchPermission(string value)
+    {
+        _loading = true;
+        _searchText = value;
+
+        string url = _searchText.Equals(string.Empty)
+            ? $"api/Permissions/?Product={Product}&CurrentPage={_pageCount}&PageSize=10"
+            : $"api/Permissions/?Product={Product}&CurrentPage={_pageCount}&PageSize=10&SearchText={_searchText}";
+
+        var client = HttpClientFactory.CreateClient("CustomHttpClient");
+        var response = await client.GetAsync(url);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var permissionPagination = await response.Content.ReadFromJsonAsync<PermissionPagination>();
+
+            if (permissionPagination?.Permissions != null)
+            {
+                _permissionsCount = permissionPagination.TotalItems;
+                _pageCount = 1;
+
+                var updatedPermissions = permissionPagination.Permissions
+                    .Select(p =>
+                        InitialPermissions.Any(ip => ip.Id == p.Id)
+                        ? new PermissionSelection(p, true)
+                        : new PermissionSelection(p, false)
+                    )
+                    .ToList();
+
+                if (updatedPermissions != null)
+                {
+                    _permissions = _permissions
+                         .Concat(updatedPermissions.Where(up => !_permissions.Any(p => p.Permission.Id == up.Permission.Id)))
+                         .ToList();
+
+                    _permissionsFiltered = _permissions
+                        .Where(p => p.Permission.Name.ToLower().Contains(_searchText.ToLower()))
+                        .ToList();
+
+                    foreach (var permission in _permissionsFiltered)
+                    {
+                        permission.SelectionChanged += async (p) => await OnSelectionChanged(p);
+                    }
+
+                    await OnSelectionChanged();
+
+                    StateHasChanged();
+                    _loading = false;
+                }
+            }
+        }
+    }
+
+    private void RemovePermission(int permissionId)
+    {
+        var permission = _permissions.First(p => p.Permission.Id == permissionId);
+        permission.IsSelected = false;
+    }
+
+    public void Dispose()
+    {
+        objRef?.Dispose();
+    }
+
+    private void SelectPermissionsByGroup(string groupName)
+    {
+
+        _hasSelectedPermission[groupName] = _permissionsFiltered.Any(permission =>
+               permission.Permission.Name.Contains(groupName, StringComparison.OrdinalIgnoreCase) && permission.IsSelected);
+
+        foreach (var permission in _permissionsFiltered)
+        {
+            if (permission.Permission.Name.Contains(groupName, StringComparison.OrdinalIgnoreCase))
+            {
+
+
+
+                if (_isDeleting[groupName] == false)
+                {
+                    permission.IsSelected = true;
+                }
+                else
+                {
+                    permission.IsSelected = false;
+                }
+            }
+        }
+        _isDeleting[groupName] = !_isDeleting[groupName];
+    }
+
+    private string GetButtonIcon(string nombre)
+    {
+        // Verifica si hay al menos un permiso seleccionado en _permissionsFiltered
+        _hasSelectedPermission[nombre] = _permissionsFiltered.Any(permission =>
+            permission.Permission.Name.Contains(nombre, StringComparison.OrdinalIgnoreCase) && permission.IsSelected);
+
+        // Si hay un permiso seleccionado, devuelve el icono de menos; si no, devuelve el icono de más
+        if (!_isDeleting[nombre] == true)
+        {
+            return Icons.Material.Filled.Add; // Icono de menos
+
+        }
+        else
+        {
+            return Icons.Material.Filled.Remove; // Icono de más
+
+        }
+    }
+}
+
+

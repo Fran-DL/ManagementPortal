@@ -1,0 +1,19 @@
+﻿@inject NavigationManager NavigationManager
+@inject IStringLocalizer<AppLocalization> Loc
+
+<MudStack Justify="Justify.Center"
+          Row="Row"
+          Style="cursor: pointer;"
+          onclick="@(() => NavigationManager.NavigateTo("/"))"
+          AlignItems="AlignItems.Center">
+    <MudImage Src="logo.svg" Style=@( $"width: {@Width}" ) />
+    <MudText Typo="Typo.h6">@Loc["logo"]</MudText>
+</MudStack>
+
+@code {
+    [Parameter]
+    public string Width { get; set; } = "150px";
+
+    [Parameter]
+    public bool Row { get; set; } = false;
+}

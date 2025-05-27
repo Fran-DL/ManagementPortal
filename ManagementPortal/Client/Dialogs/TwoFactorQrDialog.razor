@@ -1,0 +1,115 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using ManagementPortal.Shared.Dtos
+
+@inject IStringLocalizer<AppLocalization> Loc
+@inject IHttpClientFactory HttpClientFactory
+@inject IDialogService DialogService
+
+<MudDialog DefaultFocus="DefaultFocus.None">
+    <DialogContent>
+        <MudStack AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.h6" Align="Align.Center">
+                @Loc["obtainAuthCodeMessage"]
+            </MudText>
+            <MudText Typo="Typo.body2" Align="Align.Center">
+                @Loc["authIformatinMessage"]
+            </MudText>
+            <MudText Typo="Typo.subtitle2" Align="Align.Center">
+                @Loc["authAppStepOne"]
+            </MudText>
+            <MudImage Src="@(ManagementPortal.Shared.Pictures.Base64ToPicture.ConvertToWebPicture(Image))" Style="width:50%;" />
+            <MudDivider />
+            <MudText Typo="Typo.subtitle2" Align="Align.Center">
+                @Loc["authAppStepTwo"]
+            </MudText>
+            <EditForm Model="@model" OnValidSubmit="Submit">
+                <DataAnnotationsValidator />
+                <MudTextField FullWidth="true" Immediate="true" Variant="Variant.Outlined" HelperText=@Loc["codeField"]
+                              @bind-Value="model.Code" For="@(() => model.Code)" AutoFocus="true" />
+            </EditForm>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <CustomButton OnClick="Cancel" Text="@Loc["cancel"]" Width="100" />
+        <CustomButton Waiting="_waiting"
+                      OnClick="Submit" Color="Color.Success" Text="@Loc["confirm"]" Width="100" />
+    </DialogActions>
+</MudDialog>
+@code {
+    [Parameter]
+    public string Image { get; set; } = string.Empty;
+
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = new MudDialogInstance();
+
+    private HttpClient _httpClient = new();
+    private ConfirmActionDialog _confirmActionDialog = new();
+
+    Verify2faCodeRequest model = new Verify2faCodeRequest();
+    private bool _waiting { get; set; } = false;
+
+    protected override void OnInitialized()
+    {
+        _httpClient = HttpClientFactory.CreateClient("CustomHttpClient");
+    }
+
+    private async Task Submit()
+    {
+        _waiting = true;
+
+        Verify2faCodeRequest verifyTwoFactorRequest = new Verify2faCodeRequest
+            {
+                Code = model.Code
+            };
+
+        var client = HttpClientFactory.CreateClient("CustomHttpClient");
+        string twoFactorVerifyUrl = $"api/Account/Verify2faApp";
+        var response = await client.PostAsJsonAsync(twoFactorVerifyUrl, verifyTwoFactorRequest);
+
+        _waiting = false;
+
+        if (response.IsSuccessStatusCode)
+        {
+            MudDialog.Close();
+
+            DialogParameters parametersSuccess = new DialogParameters
+            {
+                { "Message", Loc["2faSuccessMessage"].Value },
+                { "Icon", Icons.Material.Filled.CheckCircleOutline },
+                { "ShowCancel", false},
+                { "CallBackOk", new EventCallback(this, () => _confirmActionDialog.Close())}
+            };
+
+            DialogOptions optionsSuccess = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+            var dialogError = await DialogService.ShowAsync<ConfirmActionDialog>("", parametersSuccess, optionsSuccess);
+
+            if (dialogError.Dialog != null)
+            {
+                _confirmActionDialog = (ConfirmActionDialog)dialogError.Dialog;
+            }
+        }
+        else
+        {
+            DialogParameters parametersSuccess = new DialogParameters
+            {
+                { "Message", Loc["2faErrorMessage"].Value },
+                { "Icon", Icons.Material.Filled.Error },
+                { "ShowCancel", false},
+                { "CallBackOk", new EventCallback(this, () => _confirmActionDialog.Close())}
+            };
+
+            DialogOptions optionsSuccess = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+            var dialogError = await DialogService.ShowAsync<ConfirmActionDialog>("", parametersSuccess, optionsSuccess);
+
+            if (dialogError.Dialog != null)
+            {
+                _confirmActionDialog = (ConfirmActionDialog)dialogError.Dialog;
+            }
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

@@ -1,0 +1,198 @@
+﻿@using ManagementPortal.Shared.Dtos
+@using ManagementPortal.Shared.Dtos.ResponseMessages
+@using ManagementPortal.Shared.Constants
+@using Dialogs
+
+@inject IStringLocalizer<AppLocalization> Loc
+@inject IHttpClientFactory HttpClientFactory
+@inject IDialogService DialogService
+
+<MudGrid Justify="Justify.FlexEnd">
+    <MudItem sm="8" md="8" lg="8">
+        <MudStack Spacing="1">
+            <MudToggleGroup T="Products"
+                            SelectionMode="SelectionMode.MultiSelection"
+                            Values="_selectedProducts"
+                            ValuesChanged="OnSelectProduct"
+                            Delimiters="false"
+                            Disabled="Disabled"
+                            Class="flex-grow-1"
+                            Outlined="true" Size="Size.Medium"
+                            FixedContent="false"
+                            Color="@(Disabled ? Color.Secondary : Color.Primary)"
+                            CheckMark="true">
+                @foreach (var product in _products.OrderBy(p => p.ToString()))
+                {
+                    <MudToggleItem Value="product" Class="justify-start pl-4"
+                                   Disabled="@(User.Products.Any(p => p.Product == product && !p.Active))"
+                                   UnselectedIcon="@Icons.Material.Filled.CheckBoxOutlineBlank"
+                                   SelectedIcon="@Icons.Material.Filled.CheckBox" />
+                }
+            </MudToggleGroup>
+            <MudText Typo="Typo.caption">@Loc["Productos"]</MudText>
+        </MudStack>
+    </MudItem>
+</MudGrid>
+<MudTabs Outlined="true" Rounded="true" Border="true" ActivePanelIndex="@_initialIndex"
+         ApplyEffectsToContainer="true" PanelClass="pa-2" Class="mud-width-full">
+    @foreach (var product in _combinedProducts)
+    {
+        <MudTabPanel Text="@product.ToString()" IconColor="Color.Error"
+                     Icon="@(User.Products.Any(p => p.Product == product && !p.Active) ? Icons.Material.Filled.DeleteForever : string.Empty)">
+            <MudStack Row>
+                @if (product != Products.ManagementPortal)
+                {
+
+                    <MudStack Spacing="1">
+                        <MudTextField @bind-Value="_productsDetail[product].Detail.ExternalIds"
+                                      Margin="Margin.Dense"
+                                      Class="my-0"
+                                      Disabled="@(Disabled || User.Products.Any(p => p.Product == product && !p.Active))" HelperText=@Loc["ExternalIds"]
+                                      Variant="Variant.Outlined" />
+                        <MudStack Row Spacing="1">
+                            <MudTextField @bind-Value="_productsDetail[product].Detail.TenantId"
+                                          Margin="Margin.Dense"
+                                          Disabled HelperText=@Loc["TenantId"]
+                                          Variant="Variant.Outlined" />       
+                            <MudStack Spacing="1">
+                                <MudChip T="string"
+                                         Style="@($"background-color: {_productsDetail[product]?.Detail?.Status?.Color ?? ""}")">
+                                    @(_productsDetail[product]?.Detail?.Status?.Name ?? Loc["statusAusent"])
+                                </MudChip>
+                                <MudText Typo="Typo.caption" Class="ml-2">@Loc["Status"]</MudText>
+                            </MudStack>
+                        </MudStack>
+                        @if (_productsDetail[product].Detail.Signature != null)
+                        {
+                            <MudImage Src="@(ManagementPortal.Shared.Pictures.Base64ToPicture.ConvertToWebPicture(_productsDetail[product].Detail.Signature))"
+                                      Height="100" Width="350" />
+                            <MudText Typo="Typo.caption" Class="ml-2">@Loc["Signature"]</MudText>
+                        }
+                        else
+                        {
+                            <MudStack Class="border-solid border-2 mud-border-default pa-4 rounded-lg" Spacing="1"
+                                      Justify="Justify.Center" AlignItems="AlignItems.Center"
+                                      Style="height: 100px; width: 350px;">
+                                <MudIcon Icon="@Icons.Material.Filled.HideImage" Size="Size.Large" />
+                            </MudStack>
+                            <MudText Typo="Typo.caption" Class="ml-2">@Loc["Signature"]</MudText>
+                        }
+                    </MudStack>
+                }
+                <MudStack Spacing="1" Class="mud-width-full">
+                    <RolesSelector RolesSend="OnRolesSend"
+                                   Product="@product"
+                                   InitialRoles="_productsDetail.ContainsKey(product) ? _productsDetail[product].Roles : new List<ApplicationRoleDto>()"
+                                   Disable="@(Disabled || User.Products.Any(p => p.Product == product && !p.Active))" />
+                    <MudText Typo="Typo.caption" Class="ml-2">@Loc["roles"]</MudText>
+                </MudStack>
+            </MudStack>
+        </MudTabPanel>
+    }
+</MudTabs>
+
+@code {
+    [Parameter]
+    public bool Disabled { get; set; } = false;
+
+    [Parameter]
+    public string SelectedProduct { get; set; } = Products.ManagementPortal.ToString();
+
+    [Parameter]
+    public ApplicationUserDto User { get; set; } = new();
+
+    public class ProductDetail
+    {
+        public List<ApplicationRoleDto> Roles { get; set; } = new();
+        public ApplicationUserProductDto Detail { get; set; } = new();
+    }
+
+    private int _initialIndex = 0;
+
+    private IEnumerable<Products> _selectedProducts = new List<Products>();
+    private List<Products> _combinedProducts = new();
+
+    private Dictionary<Products, ProductDetail> _productsDetail = new();
+    private IEnumerable<Products> _products = Enum.GetValues(typeof(Products))
+                                            .Cast<Products>()
+                                            .Where(p => p != Products.OthersProducts && p != Products.ManagementPortal)
+                                            .ToList();
+
+    protected override void OnInitialized()
+    {
+        _selectedProducts = User.Products.Where(p => p.Active).Select(p => p.Product).ToList();
+
+        _combinedProducts = new List<Products> { Products.ManagementPortal }
+            .Concat(User.Products.Select(p => p.Product)
+            .Concat(_selectedProducts)
+            .Distinct()
+            .OrderBy(p => p.ToString()))
+            .ToList();
+
+        if (Products.TryParse(SelectedProduct, out Products productEnum))
+        {
+            _initialIndex = _combinedProducts.IndexOf(productEnum);
+        }
+
+        _productsDetail[Products.ManagementPortal] = new ProductDetail();
+
+        foreach (var product in User.Products)
+        {
+            if (!_productsDetail.ContainsKey(product.Product))
+            {
+                _productsDetail[product.Product] = new ProductDetail();
+            }
+
+            _productsDetail[product.Product].Detail = new ApplicationUserProductDto(product);
+        }
+
+        foreach (var role in User.Roles)
+        {
+            var product = role.ApplicationManagment;
+
+            var roleDto = new ApplicationRoleDto
+                {
+                    Id = role.Id,
+                    Name = role.Name,
+                    ApplicationManagment = role.ApplicationManagment,
+                };
+
+            if (!_productsDetail.ContainsKey(product))
+            {
+                _productsDetail[product] = new ProductDetail();
+            }
+
+            _productsDetail[product].Roles.Add(roleDto);
+        }
+    }
+
+    private void OnRolesSend((List<ApplicationRoleDto> roles, Products product) data)
+    {
+        _productsDetail[data.product].Roles = data.roles;
+        _initialIndex = _combinedProducts.IndexOf(data.product);
+    }
+
+    private void OnSelectProduct(IEnumerable<Products> products)
+    {
+        foreach (var product in products)
+        {
+            if (!_productsDetail.ContainsKey(product))
+            {
+                _productsDetail[product] = new ProductDetail();
+            }
+        }
+        _selectedProducts = products;
+
+        _combinedProducts = new List<Products> { Products.ManagementPortal }
+            .Concat(User.Products.Select(p => p.Product)
+            .Concat(_selectedProducts)
+            .Distinct()
+            .OrderBy(p => p.ToString()))
+            .ToList();
+    }
+
+    public Dictionary<Products, ProductDetail> GetProductsDetail()
+    {
+        return _productsDetail.Where(p => _selectedProducts.Contains(p.Key) || p.Key == Products.ManagementPortal).ToDictionary();
+    }
+}

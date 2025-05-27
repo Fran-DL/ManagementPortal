@@ -1,0 +1,304 @@
+@page "/login"
+
+@using Dialogs
+@using MudBlazor
+@using ManagementPortal.Shared.Models
+@using ManagementPortal.Shared.Constants
+@using ManagementPortal.Shared.Dtos
+
+@inject IHttpClientFactory HttpClientFactory
+@inject Services.CustomAuthStateProvider CustomAuthStateProvider
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@inject IStringLocalizer<AppLocalization> Loc
+@inject MessagingService MessagingService
+
+<MudPaper Height="100vh" Width="100vw" Class="align-content-center" Elevation="0">
+    <MudGrid Justify="Justify.Center">
+        <MudItem lg="4" md="6" sm="8">
+            <MudPaper Class="pa-4" Elevation="2">
+                <EditForm Model="@loginModel" OnValidSubmit="OnValidSubmit" class="mud-height-full">
+                    <DataAnnotationsValidator />
+                    <MudStack Class="mud-height-full" Justify="Justify.SpaceBetween">
+                        <Logo Width="150px" />
+                        <MudStack Class="px-16">
+                            <MudTextField HelperText=@Loc["usernameField"]
+                                          @bind-Value="loginModel.Username" For="@(() => loginModel.Username)" />
+
+                            <MudTextField @bind-Value="loginModel.Password" For="@(() => loginModel.Password)"
+                                          HelperText=@Loc["passwordField"]
+                                          Variant="Variant.Text" InputType="@PasswordInput"
+                                          Adornment="Adornment.End"
+                                          AdornmentIcon="@PasswordInputIcon" Class="mt-3"
+                                          OnAdornmentClick="ButtonTestclick"
+                                          AdornmentAriaLabel="Show Password" />
+                            <MudLink Class="align-self-end"
+                                     OnClick="recoverPassword" Typo="Typo.caption">@Loc["recoverPassword"]</MudLink>
+                        </MudStack>
+                        <MudStack Class="align-self-end pt-8">
+                            <CustomButton ButtonType="ButtonType.Submit"
+                                          Variant="Variant.Outlined"
+                                          Color="Color.Primary"
+                                          Width="150"
+                                          Waiting="_waiting"
+                                          Text="@Loc["logIn"]"
+                                          Class="ml-auto custom-button" />
+                        </MudStack>
+                    </MudStack>
+                </EditForm>
+            </MudPaper>
+            <MudStack Class="mt-4">
+                <UserPreferences />
+            </MudStack>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@code {
+    private HttpClient _httpClient = new();
+    private ConfirmActionDialog _confirmActionDialog = new();
+
+    LoginUserRequest loginModel = new LoginUserRequest();
+    InputType PasswordInput = InputType.Password;
+    private string _method { get; set; } = string.Empty;
+    string PasswordInputIcon = Icons.Material.Filled.VisibilityOff;
+    private bool _waiting { get; set; } = false;
+    bool isShow;
+
+
+    protected override void OnInitialized()
+    {
+        _httpClient = HttpClientFactory.CreateClient("CustomHttpClient");
+        _httpClient.DefaultRequestHeaders.Add("product", Products.ManagementPortal.ToString());
+    }
+
+    void ButtonTestclick()
+    {
+        @if (isShow)
+        {
+            isShow = false;
+            PasswordInputIcon = Icons.Material.Filled.VisibilityOff;
+            PasswordInput = InputType.Password;
+        }
+        else
+        {
+            isShow = true;
+            PasswordInputIcon = Icons.Material.Filled.Visibility;
+            PasswordInput = InputType.Text;
+        }
+    }
+
+    private async Task OnValidSubmit(EditContext context)
+    {
+        _waiting = true;
+
+        LoginUserRequest loginUserRequest = new LoginUserRequest
+            {
+                Username = loginModel.Username,
+                Password = loginModel.Password
+            };
+
+        var response = await _httpClient.PostAsJsonAsync("api/Account/login", loginUserRequest);
+
+        _waiting = false;
+
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<AuthenticationResult>();
+
+            if (result != null && result.TwoFactorMethods.Count != 0)
+            {
+                if (result.TwoFactorMethods.Count == 2)
+                {
+                    var parametersTwoFactorDialog = new DialogParameters
+                    {
+                        { "MethodSend", new EventCallback<string>(this, OnMethodSend) }
+                    };
+
+                    DialogOptions optionsTwoFactorDialog = new()
+                        {
+                            NoHeader = true,
+                            CloseOnEscapeKey = false,
+                            BackdropClick = false
+                        };
+                    var twoFactorDialog = await DialogService
+                        .ShowAsync<TwoFactorAuthSelectDialog>("", parametersTwoFactorDialog, optionsTwoFactorDialog);
+                }
+                else
+                {
+                    var method = result.TwoFactorMethods.FirstOrDefault();
+                    _method = method ?? string.Empty;
+
+                    if (_method.Equals("Email"))
+                    {
+                        response = await _httpClient.PostAsync("api/Account/SendCodeEmail", null);
+                    }
+
+                    DialogParameters parametersTwoFactorDialog = new DialogParameters
+                    {
+                        { "Method", method }
+                    };
+
+                    DialogOptions optionsTwoFactorDialog = new()
+                        {
+                            NoHeader = true,
+                            CloseOnEscapeKey = false,
+                            BackdropClick = false
+                        };
+                    var dialogWaiting = await DialogService
+                        .ShowAsync<TwoFactorAuthDialog>("", parametersTwoFactorDialog, optionsTwoFactorDialog);
+                }
+            }
+            else if (result != null && result.FirstLogin == true)
+            {
+                DialogParameters parametersChangePass = new DialogParameters
+                {
+                    { "Username", loginModel.Username },
+                    { "Password", loginModel.Password }
+                };
+
+                DialogOptions optionsChangePass = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+                var dialog = await DialogService.ShowAsync<ChangePasswordDialog>("", parametersChangePass, optionsChangePass);
+            }
+            else if (result == null)
+            {
+                DialogParameters parametersError = new DialogParameters
+                    {
+                        { "Message", Loc["loginError"].Value },
+                        { "Color", Color.Primary },
+                        { "Icon", Icons.Material.Filled.Error },
+                        { "ShowCancel", false},
+                        { "CallBackOk", new EventCallback(this, () => _confirmActionDialog.Close())}
+                    };
+
+                DialogOptions optionsError = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+                var dialogError = await DialogService.ShowAsync<ConfirmActionDialog>("", parametersError, optionsError);
+
+                if (dialogError.Dialog != null)
+                {
+                    _confirmActionDialog = (ConfirmActionDialog)dialogError.Dialog;
+                }
+            }
+            else
+            {
+                await CustomAuthStateProvider.NotifyUserAuthentication(result);
+                NavigationManager.NavigateTo("/", true);
+            }
+        }
+        else
+        {
+            DialogParameters parametersError = new DialogParameters
+                {
+                    { "Message", Loc["passwordOrUserIncorrectMessage"].Value },
+                    { "Color", Color.Primary },
+                    { "Icon", Icons.Material.Filled.Error },
+                    { "ShowCancel", false},
+                    { "CallBackOk", new EventCallback(this, () => _confirmActionDialog.Close())}
+                };
+
+            DialogOptions optionsError = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+            var dialogError = await DialogService.ShowAsync<ConfirmActionDialog>("", parametersError, optionsError);
+
+            if (dialogError.Dialog != null)
+            {
+                _confirmActionDialog = (ConfirmActionDialog)dialogError.Dialog;
+            }
+        }
+    }
+
+    private async Task OnMethodSend(string method)
+    {
+        _method = method;
+        DialogParameters parameters = new DialogParameters
+        {
+            { "Method", _method }
+        };
+
+        DialogOptions optionsLoading = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+        var dialogWaiting = await DialogService.ShowAsync<TwoFactorAuthDialog>("", parameters, optionsLoading);
+    }
+    private async Task recoverPassword()
+    {
+        if (string.IsNullOrWhiteSpace(loginModel.Username))
+        {
+            DialogParameters parameters = new DialogParameters
+            {
+                {"Message", Loc["enterUserSuggestion"].Value }
+            };
+            DialogOptions _options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+            var dialog = await DialogService.ShowAsync<InfoDialog>("", parameters, _options);
+        }
+        else
+        {
+            string _msgConfirmRecoverPassword = Loc["confirmRecoverPassword"].Value;
+            DialogParameters parameters = new DialogParameters
+            {
+                { "Message", _msgConfirmRecoverPassword},
+                { "Color", Color.Primary },
+                { "Icon", Icons.Material.Filled.LockPerson},
+                { "CallBackOk", new EventCallback(this, confirmRecoverPassword) },
+                { "RedOk", true}
+            };
+
+            DialogOptions _options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+            var dialog = await DialogService.ShowAsync<ConfirmActionDialog>("", parameters, _options);
+
+            if (dialog.Dialog != null)
+            {
+                _confirmActionDialog = (ConfirmActionDialog)dialog.Dialog;
+            }
+        }
+
+    }
+    private async Task confirmRecoverPassword()
+    {
+        string _msgRecoveringPassword = Loc["sendingEmail"];
+        DialogParameters parametersDialog = new DialogParameters
+            {
+                { "Message", _msgRecoveringPassword },
+                { "Waiting", true },
+                { "ShowCancel", true },
+                { "CallBackOk", new EventCallback(this, confirmRecoverPassword) }
+            };
+        _confirmActionDialog.UpdateParameters(parametersDialog);
+
+        string _username = loginModel.Username;
+        var response = await _httpClient.PostAsync($"api/Account/ForgotPassword?username={_username}", null);
+
+        _waiting = false;
+
+        if (response.IsSuccessStatusCode)
+        {
+
+
+
+
+            string _msgSuccessRecoverPassword = Loc["sentEmailResetPassword"];
+            parametersDialog = new DialogParameters
+            {
+                { "Message", _msgSuccessRecoverPassword },
+                { "Color", Color.Primary },
+                { "Icon", Icons.Material.Filled.CheckCircleOutline },
+                { "Waiting", false },
+                { "ShowCancel", false} ,
+                { "RedOk", false},
+                { "CallBackOk", new EventCallback(this, () => _confirmActionDialog.Close())}
+            };
+
+            _confirmActionDialog.UpdateParameters(parametersDialog);
+        }
+        else
+        {
+            string _msgErrorDeletion = Loc["errorSendEmail"];
+            parametersDialog = new DialogParameters
+            {
+                { "Message", _msgErrorDeletion },
+                { "Icon", Icons.Material.Filled.Error },
+                { "Waiting", false },
+                { "CallBackOk", new EventCallback(this, () => _confirmActionDialog.Close())}
+            };
+
+            _confirmActionDialog.UpdateParameters(parametersDialog);
+        }
+    }
+}

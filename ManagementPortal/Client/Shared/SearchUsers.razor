@@ -1,0 +1,163 @@
+﻿@using ManagementPortal.Shared.Constants
+@using ManagementPortal.Shared.Dtos
+@inject IStringLocalizer<AppLocalization> Loc
+
+
+@inject IHttpClientFactory HttpClientFactory
+
+<MudStack Spacing="0" Class="mud-width-full">
+    <MudTextField T="string"
+    @onkeydown="HandleKeyDown"
+    Disabled="@Disabled"
+    Value="_searchString"
+    ValueChanged="@(s=>OnSearch(s))"
+    Placeholder=@Loc["search"]
+    Immediate="true"
+    Class="ma-0"
+    Adornment="Adornment.Start"
+    AdornmentIcon="@Icons.Material.Filled.Search"
+    IconSize="Size.Medium"
+    Margin="@Margin"
+    Variant="Variant.Outlined" />
+    <MudPopover Open="@_open"
+    RelativeWidth="true"
+    OverflowBehavior="OverflowBehavior.FlipAlways"
+    AnchorOrigin="Origin.BottomCenter"
+    TransformOrigin="Origin.TopCenter"
+    Paper="true">
+        <MudList T="string">
+            @if (_users.Count() == 0
+            && Channels.Count(ch => ch.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase)) == 0
+            && !_searchString.Equals(string.Empty))
+            {
+                <MudListItem>
+                    <ChildContent>
+                        <MudText Typo="Typo.subtitle1">@Loc["searchUsersNoResults"]</MudText>
+                    </ChildContent>
+                </MudListItem>
+            }
+            else
+            {
+                @foreach (var channel in Channels
+             .Where(ch => ch.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+             .Take(4))
+                {
+                    <MudListItem OnClick="@(async () => await OnChannelClick(channel))">
+                        <AvatarContent>
+                            <MudAvatar Color="Color.Info">
+                                <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Large" />
+                            </MudAvatar>
+                        </AvatarContent>
+                        <ChildContent>
+                            <MudText Typo="Typo.subtitle1">@channel.Name</MudText>
+                        </ChildContent>
+                    </MudListItem>
+                }
+                @foreach (var user in _users.Where(u => !ExcludedUsers.Any(eu => eu.Id.Equals(u.Id))))
+                {
+                    <MudListItem OnClick="@(async () => await OnUserClick(user))">
+                        <AvatarContent>
+                            <MudAvatar Color="Color.Info">@user.UserName.Substring(0, 1).ToUpper()</MudAvatar>
+                        </AvatarContent>
+                        <ChildContent>
+                            <MudText Typo="Typo.subtitle1">@user.UserName</MudText>
+                            <MudText Typo="Typo.subtitle2">@user.Email</MudText>
+                        </ChildContent>
+                    </MudListItem>
+                }
+            }
+        </MudList>
+    </MudPopover>
+</MudStack>
+
+@code
+{
+    [Parameter]
+    public EventCallback<ApplicationUserDto> UserSend { get; set; }
+
+    [Parameter]
+    public List<ApplicationUserDto> ExcludedUsers { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<MessagingChannelDto> ChannelSend { get; set; }
+
+    [Parameter]
+    public List<MessagingChannelDto> Channels { get; set; } = new();
+
+    [Parameter]
+    public bool Disabled { get; set; } = true;
+
+    [Parameter]
+    public Margin Margin { get; set; } = Margin.Normal;
+
+    private bool _loading { get; set; } = true;
+    private string _searchString = string.Empty;
+    private List<ApplicationUserDto> _users = new();
+    private bool _open { get; set; } = false;
+    private int _pageSize { get; set; } = 4;
+
+    private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetUsers(CancellationToken.None);
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            _open = false;
+        }
+    }
+
+    private async Task OnSearch(string text)
+    {
+        _open = text.Length > 0;
+        _searchString = text;
+        _cancellationTokenSource.Cancel();
+        _cancellationTokenSource = new CancellationTokenSource();
+        var token = _cancellationTokenSource.Token;
+        await GetUsers(token);
+    }
+
+    private async Task OnChannelClick(MessagingChannelDto channel)
+    {
+        _searchString = string.Empty;
+        _open = false;
+        StateHasChanged();
+        await ChannelSend.InvokeAsync(channel);
+    }
+
+    private async Task OnUserClick(ApplicationUserDto user)
+    {
+        _searchString = string.Empty;
+        _open = false;
+        StateHasChanged();
+        await UserSend.InvokeAsync(user);
+    }
+
+    private async Task GetUsers(CancellationToken cancellationToken)
+    {
+        _loading = true;
+        string url = _searchString.Equals(string.Empty)
+            ? $"api/Messaging?PageSize={_pageSize}"
+            : $"api/Messaging?PageSize={_pageSize}&SearchText={_searchString}";
+
+
+        var client = HttpClientFactory.CreateClient("CustomHttpClient");
+        var response = await client.GetAsync(url, cancellationToken);
+        if (response.IsSuccessStatusCode)
+        {
+            var userPagination = await response.Content.ReadFromJsonAsync<UserPagination>();
+
+            if (userPagination?.Users != null)
+            {
+                _users = userPagination.Users;
+            }
+        }
+
+        StateHasChanged();
+        _loading = false;
+    }
+}

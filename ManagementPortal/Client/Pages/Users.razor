@@ -1,0 +1,30 @@
+﻿@page "/Users"
+@attribute [Authorize(Roles = "ListUsers, CreateUser")]
+
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<AppLocalization> Loc
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using ManagementPortal.Shared.Dtos
+@using Microsoft.AspNetCore.Authorization
+@using ManagementPortal.Shared.Constants
+
+<MudTabs Rounded="true" ApplyEffectsToContainer="true" Color="Color.Secondary" SliderColor="Color.Primary">
+    <MudTabPanel Class="" Text="Usuarios" Style="color: var(--mud-palette-text-primary); text-align: center">
+        <TableUsers Product="Products.ManagementPortal" />
+    </MudTabPanel>
+    @foreach (var product in _products.OrderBy(p => p.ToString()))
+    {
+        <MudTabPanel Text="@product.ToString()" Style="color: var(--mud-palette-text-primary);">
+            <TableUsers Product="product" />
+        </MudTabPanel>
+    }
+</MudTabs>
+
+@code {
+    private ApplicationUserDto _user = new();
+    private IEnumerable<Products> _products = Enum.GetValues(typeof(Products))
+                                    .Cast<Products>()
+                                    .Where(p => p != Products.OthersProducts && p != Products.ManagementPortal)
+                                    .ToList();
+}

@@ -1,0 +1,24 @@
+﻿<MudDialog Class="custom-dialog">
+    <DialogContent>
+        <MudStack AlignItems="AlignItems.Center">
+            <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Style="font-size: 6rem;" Class="my-4" />
+            <MudText Color="Color.Error">
+                @Message
+            </MudText>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Error" OnClick="Submit">Ok</MudButton>
+    </DialogActions>
+</MudDialog>
+@code {
+    [Parameter]
+    public string Message { get; set; } = string.Empty;
+
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = new MudDialogInstance();
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(true));
+
+    private void Cancel() => MudDialog.Cancel();
+}

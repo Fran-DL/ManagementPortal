@@ -1,0 +1,77 @@
+﻿@page "/roles"
+@attribute [Authorize(Roles = "ListRoles, CreateRole")]
+
+@using ManagementPortal.Client.Services
+@using ManagementPortal.Shared.Dtos
+@using Microsoft.AspNetCore.Authorization
+@using ManagementPortal.Shared.Constants
+
+<MudDynamicTabs @ref="@_dynamicTabs" @bind-ActivePanelIndex="@_rolesIndex"
+                CloseTab="@CloseTabCallback"
+                AddIconClass="invisible"
+                Elevation="2"
+                Rounded="true" ApplyEffectsToContainer="true" Color="Color.Secondary" SliderColor="Color.Primary">
+    <MudTabPanel Text="@Products.ManagementPortal.ToString()" ShowCloseIcon="false" Style="color: var(--mud-palette-text-primary);">
+        <TableRoles Product="Products.ManagementPortal" RoleSend="OnRoleSend" />
+    </MudTabPanel>
+    @foreach (var tab in _roleTabs)
+    {
+        <MudTabPanel ID="@tab.Id" Text="@tab.Label" ShowCloseIcon="@tab.Closed" Style="color: var(--mud-palette-text-primary);">
+            @if (!tab.IsRole && Products.TryParse(tab.Label, out Products productEnum))
+            {
+                <TableRoles Product="productEnum" RoleSend="OnRoleSend" />
+            }
+            else if (tab.IsRole)
+            {
+                <EditRole Product="@tab.Product.ToString()" RoleName="@tab.Label" Disabled="false" />
+            }
+        </MudTabPanel>
+    }
+</MudDynamicTabs>
+
+@code {
+    private ApplicationRoleDto _role = new();
+    private IEnumerable<Products> _products = Enum.GetValues(typeof(Products))
+                                    .Cast<Products>()
+                                    .Where(p => p != Products.OthersProducts)
+                                    .ToList();
+
+    private class TabView
+    {
+        public string Label { get; set; } = string.Empty;
+        public Products Product { get; set; }
+        public Guid Id { get; set; }
+        public bool Closed { get; set; }
+        public bool IsRole { get; set; }
+    }
+
+    private MudDynamicTabs _dynamicTabs = new();
+    private List<TabView> _roleTabs = new();
+    private int _rolesIndex;
+
+    protected override void OnInitialized()
+    {
+        foreach (var product in _products.Where(p => p != Products.ManagementPortal).OrderBy(p => p.ToString()))
+        {
+            _roleTabs.Add(new TabView { Id = Guid.NewGuid(), Label = product.ToString(), Product = product, Closed = false, IsRole = false });
+        }
+        _rolesIndex = 0;
+    }
+
+    public void RemoveTab(Guid id)
+    {
+        var tabView = _roleTabs.SingleOrDefault((t) => Equals(t.Id, id));
+        if (tabView is not null)
+        {
+            _roleTabs.Remove(tabView);
+        }
+    }
+
+    private void OnRoleSend(ApplicationRoleDto role)
+    {
+        _roleTabs.Add(new TabView { Id = Guid.NewGuid(), Label = role.Name, Product = role.ApplicationManagment, Closed = true, IsRole = true });
+        _rolesIndex = _roleTabs.Count();
+    }
+
+    void CloseTabCallback(MudTabPanel panel) => RemoveTab((Guid)panel.ID);
+}

@@ -1,0 +1,52 @@
+﻿@page "/{product}"
+
+@inject IStringLocalizer<AppLocalization> Loc
+@inject NavigationManager NavigationManager
+
+<PageTitle>@($"{Product} - {Loc["home"]}")</PageTitle>
+
+<MudStack>
+    <MudGrid Justify="Justify.Center">
+        <MudItem lg="4" md="4" sm="4">
+            <MudPaper Class="pa-4 ma-2" Square="true">
+                <MudStack>
+                    <MudStack AlignItems="AlignItems.Center">
+                        <MudImage Src="@imageSrc" Height="100" />
+                        <MudText Typo="Typo.h5">@Product</MudText>
+                    </MudStack>
+                    <MudDivider Class="my-4" />
+                    <MudText Class="mb-4" Typo="Typo.h6" Align="Align.Center">@($"{Loc["welcomeTo"]} {Product}")</MudText>
+                    <CustomButton Variant="Variant.Filled"
+                                  Class="align-self-center"
+                                  Text="@Loc["returnToMP"]"
+                                  Width="200"
+                                  OnClick="@(() => NavigationManager.NavigateTo("/"))"
+                                  Color="Color.Primary" />
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudStack>
+
+@code {
+    [Parameter]
+    public string Product { get; set; } = string.Empty;
+
+    private string imageSrc { get; set; } = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        switch (Product)
+        {
+            case "AssetManager":
+                imageSrc = "AM vectorial.svg";
+                break;
+            case "EventManager":
+                imageSrc = "EM vectorial.svg";
+                break;
+            case "IoTMonitor":
+                imageSrc = "IM vectorial.svg";
+                break;
+        }
+    }
+}

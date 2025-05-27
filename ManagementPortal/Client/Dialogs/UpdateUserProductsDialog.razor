@@ -1,0 +1,71 @@
+﻿@using ManagementPortal.Shared.Constants
+
+@inject IStringLocalizer<AppLocalization> Loc
+
+<MudDialog Class="custom-dialog">
+    <DialogContent>
+        <MudStack Class="mud-height-full mud-width-full" Justify="Justify.Center" AlignItems="AlignItems.Center">
+            <MudIcon Icon="@Icons.Material.Filled.Info"
+                     Color="MudBlazor.Color.Info"
+                     Size="Size.Small"
+                     Style="font-size: 4rem;" Class="my-2" />
+            <MudText Typo="Typo.h6">
+                @(FailedProducts.Count > 0
+                    ? "Ocurrió un error al actualizar el perfil"
+                    : "Perfil actualizado correctamente")
+            </MudText>
+            <MudStack Spacing="1" AlignItems="AlignItems.Center">
+                @foreach (var product in SuccessProducts)
+                {
+                    <MudText Typo="Typo.body1">@($"{product.Product}:")</MudText>
+                    <MudAlert Severity="Severity.Success"
+                              Variant="Variant.Filled"
+                              Dense="true"
+                              Style="width: 350px;"
+                              Class="my-2">
+                        @product.Message
+                    </MudAlert>
+                }
+            </MudStack>
+            <MudStack Spacing="1" AlignItems="AlignItems.Center">
+                @foreach (var product in FailedProducts)
+                {
+                    <MudText Typo="Typo.body1">@($"{product.Product}:")</MudText>
+                    <MudAlert Severity="Severity.Error"
+                              Variant="Variant.Filled"
+                              Dense="true"
+                              Style="width: 350px;"
+                              Class="my-2">
+                        @product.Message
+                    </MudAlert>
+                }
+            </MudStack>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">@Loc["close"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public string Message { get; set; } = string.Empty;
+
+    [Parameter]
+    public List<(string Product, string Message)> SuccessProducts { get; set; } = new();
+
+    [Parameter]
+    public List<(string Product, string Message)> FailedProducts { get; set; } = new();
+
+    [Parameter]
+    public EventCallback CallBackOk { get; set; }
+
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = new MudDialogInstance();
+
+    public async Task Close()
+    {
+        MudDialog.Close(DialogResult.Ok(true));
+        await CallBackOk.InvokeAsync();
+    }
+}

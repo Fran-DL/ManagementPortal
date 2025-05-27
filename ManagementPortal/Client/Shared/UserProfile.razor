@@ -1,0 +1,155 @@
+﻿@using ManagementPortal.Shared.Dtos
+@using Dialogs
+@using System.Net.Mail
+
+@inject IStringLocalizer<AppLocalization> Loc
+@inject IHttpClientFactory HttpClientFactory
+@inject IDialogService DialogService
+
+<EditForm Model="@User">
+    @if (!Disabled)
+    {
+        <DataAnnotationsValidator />
+    }
+    <MudGrid Spacing="4">
+        <MudItem sm="4" md="4" lg="4">
+            <MudStack AlignItems="AlignItems.Center" Style="position: relative;">
+                <MudAvatar Color="Color.Primary" Variant="Variant.Outlined"
+                           Style="height:150px; width:150px;">
+                    @if (_imageUrl != null)
+                    {
+                        <MudImage Src="@_imageUrl" />
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Person" Style="font-size:5rem;" />
+                    }
+                </MudAvatar>
+                <MudFileUpload Style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2;"
+                               T="IBrowserFile" Disabled="Disabled" FilesChanged="UploadImage" Accept=".png, .jpg, .jpeg">
+                    <ActivatorContent>
+                        <MudFab Color="Color.Dark"
+                                DropShadow="false"
+                                Disabled="Disabled"
+                                Class="@(!Disabled ? "visible" : "invisible")"
+                                StartIcon="@Icons.Material.Filled.PhotoCamera" />
+                    </ActivatorContent>
+                </MudFileUpload>
+            </MudStack>
+        </MudItem>
+        <MudItem sm="8" md="8" lg="8">
+            <MudStack Justify="Justify.SpaceAround" Class="mud-height-full" Spacing="1">
+                <MudStack Row="true">
+                    <MudTextField @bind-Value="User.Name"
+                                  Margin="Margin.Dense"
+                                  For="@(() => User.Name)"
+                                  Disabled="Disabled" HelperText=@Loc["nameField"]
+                                  FullWidth="true"
+                                  Variant="Variant.Text" />
+                    <MudTextField @bind-Value="User.LastName"
+                                  Margin="Margin.Dense"
+                                  For="@(() => User.LastName)"
+                                  Disabled="Disabled"
+                                  HelperText=@Loc["lastNameField"]
+                                  FullWidth="true"
+                                  Variant="Variant.Text" />
+                </MudStack>
+                <MudStack Row="true">
+                    <MudTextField @bind-Value="User.UserName"
+                                  Margin="Margin.Dense"
+                                  For="@(() => User.UserName)"
+                                  Disabled="true" HelperText=@Loc["usernameField"]
+                                  FullWidth="true"
+                                  Variant="Variant.Text" />
+                    <MudTextField @bind-Value="User.Email"
+                                  Margin="Margin.Dense"
+                                  For="@(() => User.Email)"
+                                  Disabled="Disabled"
+                                  HelperText=@Loc["emailField"]
+                                  FullWidth="true"
+                                  Variant="Variant.Text" />
+                </MudStack>
+            </MudStack>
+        </MudItem>
+    </MudGrid>
+</EditForm>
+
+@code {
+    [Parameter]
+    public bool Disabled { get; set; } = false;
+
+    [Parameter]
+    public ApplicationUserDto User { get; set; } = new();
+
+    private HttpClient _httpClient = new();
+    private ConfirmActionDialog _customDialog = new();
+
+    private string? _imageUrl;
+
+    protected override void OnInitialized()
+    {
+        _httpClient = HttpClientFactory.CreateClient("CustomHttpClient");
+
+        if (User.Image != null)
+        {
+            var base64 = Convert.ToBase64String(User.Image);
+            _imageUrl = ManagementPortal.Shared.Pictures.Base64ToPicture.ConvertToWebPicture(base64);
+        }
+    }
+
+    private async Task UploadImage(IBrowserFile file)
+    {
+        var allowedExtensions = new[] { ".png", ".jpg", ".jpeg" };
+        var fileExtension = Path.GetExtension(file.Name).ToLower();
+
+        if (!allowedExtensions.Contains(fileExtension))
+        {
+            DialogParameters parameters = new DialogParameters
+            {
+                { "Message", Loc["fileIsNotAnImage"].Value},
+                { "Icon", Icons.Material.Filled.Error },
+                { "ShowCancel", false },
+                { "CallBackOk", new EventCallback(this, () => _customDialog.Close()) }
+            };
+
+            DialogOptions _options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+            var dialog = await DialogService.ShowAsync<ConfirmActionDialog>("", parameters, _options);
+
+            if (dialog.Dialog != null)
+            {
+                _customDialog = (ConfirmActionDialog)dialog.Dialog;
+            }
+
+            return;
+        }
+
+        var maxFileSize = 2 * 1024 * 1024;
+
+        if(file.Size > maxFileSize)
+        {
+            DialogParameters parameters = new DialogParameters
+            {
+                { "Message", Loc["fileSize"].Value},
+                { "Icon", Icons.Material.Filled.Error },
+                { "ShowCancel", false },
+                { "CallBackOk", new EventCallback(this, () => _customDialog.Close()) }
+            };
+
+            DialogOptions _options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+            var dialog = await DialogService.ShowAsync<ConfirmActionDialog>("", parameters, _options);
+
+            if (dialog.Dialog != null)
+            {
+                _customDialog = (ConfirmActionDialog)dialog.Dialog;
+            }
+
+            return;
+        }
+
+        var buffer = new byte[file.Size];
+        await file.OpenReadStream().ReadAsync(buffer);
+        User.Image = buffer;
+        var base64 = Convert.ToBase64String(buffer);
+        _imageUrl = ManagementPortal.Shared.Pictures.Base64ToPicture.ConvertToWebPicture(base64);
+    }
+}

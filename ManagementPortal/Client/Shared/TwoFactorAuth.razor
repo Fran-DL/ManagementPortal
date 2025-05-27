@@ -1,0 +1,273 @@
+﻿@using MudBlazor
+@using Dialogs
+@using ManagementPortal.Shared.Dtos
+@using Blazored.LocalStorage;
+@using System.IdentityModel.Tokens.Jwt;
+
+@inject IDialogService DialogService
+@inject IStringLocalizer<AppLocalization> Loc
+@inject NavigationManager Navigation
+@inject IHttpClientFactory HttpClientFactory
+@inject ILocalStorageService LocalStorage
+
+<MudStack AlignItems="AlignItems.Start" Class="pa-4">
+    <MudText Typo="Typo.button">@Loc["twoFactorAppTittle"]</MudText>
+    <MudStack Row="true">
+        <MudIcon Icon="@Icons.Material.Filled.PhonelinkLock" Size="Size.Large" />
+        <MudText Typo="Typo.caption" Style="max-width:80%">
+            @Loc["twoFactorAppDescription"]
+        </MudText>
+    </MudStack>
+    <MudStack Row="true" Spacing="2" Class="align-self-end">
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                       Color="Color.Info"
+                       OnClick="@(() => EnableTwoFactor("App"))"
+                       Class=@(_username.Equals(User.UserName) ? "d-flex" : "d-none")
+                       Disabled="!_enableApp" />
+        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                       Color="Color.Error"
+                       OnClick="@(() => Delete2faMethod("App"))"
+                       Disabled="!_enableApp" />
+        <CustomButton OnClick="@(() => EnableTwoFactor("App"))"
+                      Color="Color.Default"
+                      Width="90"
+                      Waiting="_waitingApp"
+                      Disabled="_enableApp"
+                      Class=@(_username.Equals(User.UserName) ? "d-flex" : "d-none")
+                      Text=@(_enableApp ? @Loc["enabled"] : @Loc["enable"]) />
+    </MudStack>
+    <MudDivider Class="my-2" />
+    <MudText Typo="Typo.button">@Loc["twoFactorEmailTittle"]</MudText>
+    <MudStack Row="true">
+        <MudIcon Icon="@Icons.Material.Filled.MailLock" Size="Size.Large" />
+        <MudText Typo="Typo.caption" Style="max-width:80%">
+            @Loc["twoFactorEmailDescription"]
+        </MudText>
+    </MudStack>
+    <MudStack Row="true" Spacing="2" Class="align-self-end">
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                       Color="Color.Info"
+                       Class=@(_username.Equals(User.UserName) ? "d-flex" : "d-none")
+                       OnClick="@(() => EnableTwoFactor("Email"))"
+                       Disabled="!_enableEmail" />
+        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                       Color="Color.Error"
+                       OnClick="@(() => Delete2faMethod("Email"))"
+                       Disabled="!_enableEmail" />
+        <CustomButton OnClick="@(() => EnableTwoFactor("Email"))"
+                      Color="Color.Default"
+                      Width="90"
+                      Waiting="_waitingEmail"
+                      Disabled="_enableEmail"
+                      Class=@(_username.Equals(User.UserName) ? "d-flex" : "d-none")
+                      Text=@(_enableEmail ? @Loc["enabled"] : @Loc["enable"]) />
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter]
+    public ApplicationUserDto User { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<string> MethodSend { get; set; }
+
+    private HttpClient _httpClient = new();
+    private ConfirmActionDialog _confirmActionDialog = new();
+
+    private bool _enableEmail { get; set; } = false;
+    private bool _waitingEmail { get; set; } = false;
+    private bool _enableApp { get; set; } = false;
+    private bool _waitingApp { get; set; } = false;
+    private string _username { get; set; } = string.Empty;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        var token = await LocalStorage.GetItemAsync<string>("token") ?? string.Empty;
+        var handler = new JwtSecurityTokenHandler();
+        var jwtToken = handler.ReadJwtToken(token);
+        _username = jwtToken.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.UniqueName)?.Value ?? string.Empty;
+
+        _httpClient = HttpClientFactory.CreateClient("CustomHttpClient");
+
+        if (User.TwoFactorMethod != null)
+        {
+            _enableEmail = User.TwoFactorMethod.Any(p => p.Equals("Email"));
+            _enableApp = User.TwoFactorMethod.Any(p => p.Equals("App"));
+        }
+    }
+
+    private async void EnableTwoFactor(string method)
+    {
+        if (method.Equals("App"))
+        {
+            _waitingApp = true;
+            _enableApp = false;
+            StateHasChanged();
+
+            var response = await _httpClient.GetAsync("api/Account/Enable2faApp");
+
+            _waitingApp = false;
+            StateHasChanged();
+
+            if (response.IsSuccessStatusCode)
+            {
+                _waitingApp = false;
+
+                var resultApp = await response.Content.ReadFromJsonAsync<Enable2FAResult>() ?? new Enable2FAResult();
+
+                var parameters = new DialogParameters
+                {
+                    { "Image", resultApp.QrCodeImage },
+                };
+
+                DialogOptions options = new() { NoHeader = true, BackdropClick = false, CloseOnEscapeKey = false };
+                var dialogQr = await DialogService.ShowAsync<TwoFactorQrDialog>("", parameters, options);
+
+                var result = await dialogQr.Result;
+
+                _enableApp = result != null && !result.Canceled ? true : false;
+                StateHasChanged();
+            }
+            else
+            {
+                DialogParameters parameters = new DialogParameters
+                {
+                    { "Message", Loc["generateAuthCodeError"].Value },
+                    { "Icon", Icons.Material.Filled.Error },
+                    { "ShowCancel", false },
+                    { "CallBackOk", new EventCallback(this, () => _confirmActionDialog.Close()) }
+                };
+
+                DialogOptions options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+                var dialogError = await DialogService.ShowAsync<ConfirmActionDialog>("", parameters, options);
+
+                if (dialogError.Dialog != null)
+                {
+                    _confirmActionDialog = (ConfirmActionDialog)dialogError.Dialog;
+                }
+            }
+
+        }
+        else if (method.Equals("Email"))
+        {
+            _waitingEmail = true;
+            _enableEmail = false;
+            StateHasChanged();
+
+            var response = await _httpClient.GetAsync("api/Account/Enable2faEmail");
+
+            _waitingEmail = false;
+            StateHasChanged();
+
+            if (response.IsSuccessStatusCode)
+            {
+                DialogOptions options = new() { NoHeader = true, BackdropClick = false, CloseOnEscapeKey = false };
+                var dialogQr = await DialogService.ShowAsync<TwoFactorEmailDialog>("", new DialogParameters(), options);
+
+                var result = await dialogQr.Result;
+                _enableEmail = result != null && !result.Canceled ? true : false;
+                StateHasChanged();
+            }
+            else
+            {
+                DialogParameters parameters = new DialogParameters
+                {
+                    { "Message", Loc["generateAuthCodeError"].Value },
+                    { "Icon", Icons.Material.Filled.Error },
+                    { "ShowCancel", false },
+                    { "CallBackOk", new EventCallback(this, () => _confirmActionDialog.Close()) }
+                };
+
+                DialogOptions options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+                var dialogError = await DialogService.ShowAsync<ConfirmActionDialog>("", parameters, options);
+
+                if (dialogError.Dialog != null)
+                {
+                    _confirmActionDialog = (ConfirmActionDialog)dialogError.Dialog;
+                }
+            }
+        }
+    }
+
+    private async Task Delete2faMethod(string method)
+    {
+        if (method.ToLower().Equals("email"))
+        {
+            _waitingEmail = true;
+            _enableEmail = false;
+        }
+
+        if (method.ToLower().Equals("app"))
+        {
+            _waitingApp = true;
+            _enableApp = false;
+        }
+        
+        var response = await _httpClient.DeleteAsync($"api/Account/{User.UserName}/Delete2faMethod?method={method}");
+
+        if (response.IsSuccessStatusCode)
+        {
+            DialogParameters parameters = new DialogParameters
+            {
+                { "Message", Loc["delete2FASuccess"].Value },
+                { "Icon", Icons.Material.Filled.CheckCircleOutline },
+                { "ShowCancel", false },
+                { "CallBackOk", new EventCallback(this, () => _confirmActionDialog.Close()) }
+            };
+
+            DialogOptions options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+            var dialogError = await DialogService.ShowAsync<ConfirmActionDialog>("", parameters, options);
+
+            if (dialogError.Dialog != null)
+            {
+                _confirmActionDialog = (ConfirmActionDialog)dialogError.Dialog;
+            }
+
+            if (method.ToLower().Equals("email"))
+            {
+                _enableEmail = false;
+                _waitingEmail = false;
+            }
+
+            if (method.ToLower().Equals("app"))
+            {
+                _enableApp = false;
+                _waitingApp = false;
+            }
+
+            StateHasChanged();
+        }
+        else
+        {
+            DialogParameters parameters = new DialogParameters
+            {
+                { "Message", Loc["delete2FAError"].Value },
+                { "Icon", Icons.Material.Filled.Error },
+                { "ShowCancel", false },
+                { "CallBackOk", new EventCallback(this, () => _confirmActionDialog.Close()) }
+            };
+
+            DialogOptions options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+            var dialogError = await DialogService.ShowAsync<ConfirmActionDialog>("", parameters, options);
+
+            if (dialogError.Dialog != null)
+            {
+                _confirmActionDialog = (ConfirmActionDialog)dialogError.Dialog;
+            }
+
+            if (method.ToLower().Equals("email"))
+            {
+                _enableEmail = true;
+                _waitingEmail = false;
+            }
+
+            if (method.ToLower().Equals("app"))
+            {
+                _enableApp = true;
+                _waitingApp = false;
+            }
+        }
+    }
+}

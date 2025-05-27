@@ -1,0 +1,108 @@
+﻿@using ManagementPortal.Shared.Dtos
+@using ManagementPortal.Shared.Constants
+
+@inject IStringLocalizer<AppLocalization> Loc
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@inject Services.CustomAuthStateProvider CustomAuthStateProvider
+@inject IDialogService DialogService
+
+<MudDialog Class="custom-dialog" DefaultFocus="DefaultFocus.None">
+    <DialogContent>
+        <MudStack AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.h6" Align="Align.Center">
+                Para proseguir con el reseteo de contrasena, Proceda con el 2FA
+            </MudText>
+            <MudIcon Icon="@Icons.Material.Filled.Lock" Color="Color.Info" Style="font-size: 6rem;" Class="my-4" />
+            <MudText Typo="Typo.body2" Align="Align.Center">
+                @if (Method.Equals("App"))
+                {
+                    @(Loc["enter2faAppSuggestion"].Value)
+                }
+                else
+                {
+                    @(Loc["enter2faEmailSuggestion"].Value)
+                }
+            </MudText>
+            <EditForm Model="@model" OnValidSubmit="Submit">
+                <DataAnnotationsValidator />
+                <MudTextField FullWidth="true" Immediate="true" Variant="Variant.Outlined" HelperText="Two Factor Code"
+                              @bind-Value="model.Code" For="@(() => model.Code)" AutoFocus="true" />
+            </EditForm>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <CustomButton OnClick="Cancel" Text="@Loc["cancel"]" Width="100" />
+        <CustomButton OnClick="Submit" Color="Color.Success" Waiting="_waiting" Text="@Loc["confirm"]" Width="100" />
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = new MudDialogInstance();
+
+    [Parameter]
+    public string Method { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Username { get; set; } = string.Empty;
+    [Parameter]
+    public string ResetToken { get; set; } = string.Empty; //ya codificado para enviar
+
+    private HttpClient _httpClient = new();
+    private ConfirmActionDialog _confirmActionDialog = new();
+
+    Verify2faCodeRequest model = new Verify2faCodeRequest();
+    private bool _waiting { get; set; } = false;
+
+    protected override void OnInitialized()
+    {
+        _httpClient = HttpClientFactory.CreateClient("CustomHttpClient");
+        _httpClient.DefaultRequestHeaders.Add("product", Products.ManagementPortal.ToString());
+    }
+
+    private async Task Submit()
+    {
+        _waiting = true;
+
+        Verify2faCodeRequest verifyTwoFactorRequest = new Verify2faCodeRequest
+            {
+                Code = model.Code,
+                Method = Method,
+            };
+
+        var response = await _httpClient.PostAsJsonAsync($"api/Account/Verify2faResetPassword/{Username}/{ResetToken}", verifyTwoFactorRequest);
+
+        _waiting = false;
+
+        if (response.IsSuccessStatusCode)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else
+        {
+            DialogParameters parameters = new DialogParameters
+                {
+                    { "Message", Loc["2faErrorMessage"].Value },
+                    { "Waiting", false },
+                    { "ShowCancel", false },
+                    { "Icon", Icons.Material.Filled.Error },
+                    { "CallBackOk", new EventCallback(this,() => _confirmActionDialog.Close()) }
+                };
+
+            DialogOptions options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+            var dialogError = await DialogService.ShowAsync<ConfirmActionDialog>("", parameters, options);
+
+            if (dialogError.Dialog != null)
+            {
+                _confirmActionDialog = (ConfirmActionDialog)dialogError.Dialog;
+            }
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Close(DialogResult.Ok(false));
+        MudDialog.Cancel();
+    }
+}

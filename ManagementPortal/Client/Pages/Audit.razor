@@ -1,0 +1,13 @@
+﻿@page "/audit"
+@attribute [Authorize(Roles = "ListLogs")]
+
+@using Microsoft.AspNetCore.Authorization
+@using ManagementPortal.Shared.Constants
+
+
+    <TableAudit/>
+
+
+@code {
+   
+}

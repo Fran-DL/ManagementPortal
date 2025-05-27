@@ -1,0 +1,304 @@
+﻿@using MudBlazor
+@using ManagementPortal.Shared.Dtos
+@using ManagementPortal.Shared.Constants
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IHttpClientFactory HttpClientFactory
+@implements IDisposable
+@inject IJSRuntime JSRuntime
+@inject IStringLocalizer<AppLocalization> Loc
+
+<MudGrid Spacing="1">
+    @if (!Disable)
+    {
+        <MudItem lg="3" md="3" sm="4">
+            <MudTextField T="string"
+            MaxLength="256"
+            IconSize="Size.Small"
+            Disabled="@(Disable)"
+            Class="my-0"
+            Immediate="true"
+            Margin="Margin.Dense"
+            ValueChanged="@((t) => SearchRole(t))"
+            HelperText=@Loc["searchRole"]
+            Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
+            Variant="Variant.Outlined">
+            </MudTextField>
+            <div style="height: 185px; overflow-y: @(Disable ? "hidden" : "auto");"
+            id="@IdScroll">
+                @if (_loading)
+                {
+                    foreach (var i in Enumerable.Range(1, 3))
+                    {
+                        <MudSkeleton Animation="Animation.Pulse" Height="40px" Class="mx-8 py-2" />
+                    }
+                }
+                else
+                {
+                    <MudCheckBox Disabled="Disable" T="bool?"
+                    Value="_selectAll" Size="Size.Small"
+                    ValueChanged="SelectAllItems"
+                    Label=@Loc["selectAll"] />
+                    @foreach (var role in _rolesFiltered.OrderBy(r => r.Role.Name))
+                    {
+                        <MudCheckBox Disabled="Disable"
+                        @bind-Value="@role.IsSelected" Size="Size.Small"
+                        Label="@role.Role.Name" />
+                    }
+                }
+                @if (_loadingScroll)
+                {
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                }
+            </div>
+        </MudItem>
+    }
+    <MudItem lg="@(Disable ? 12 :9)" md="@(Disable ? 12 :9)" sm="@(Disable ? 12 :8)">
+        <MudPaper Outlined="true"
+        Class="border-dashed pa-4 overflow-y-auto mud-height-full" Style="height:250px;">
+            <MudStack Wrap="Wrap.Wrap" Row Spacing="1"
+            AlignItems="AlignItems.Start">
+                @foreach (var role in _roles.Where(p => p.IsSelected))
+                {
+                    if (Disable)
+                    {
+                        <MudChip T="string" Color="Color.Success">@role.Role.Name</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Color="Color.Default"
+                        OnClose="@(() => RemoveRole(role.Role.Id))">
+                            @role.Role.Name
+                        </MudChip>
+                    }
+                }
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter]
+    public EventCallback<(List<ApplicationRoleDto>, Products)> RolesSend { get; set; }
+
+    [Parameter]
+    public List<ApplicationRoleDto> InitialRoles { get; set; } = new();
+
+    [Parameter]
+    public Products Product { get; set; }
+
+    [Parameter]
+    public bool Disable { get; set; } = false;
+
+    public class RoleSelection
+    {
+        public ApplicationRoleDto Role { get; set; }
+        private bool isSelected;
+
+        public bool IsSelected
+        {
+            get => isSelected;
+            set
+            {
+                if (isSelected != value)
+                {
+                    isSelected = value;
+                    SelectionChanged?.Invoke(this);
+                }
+            }
+        }
+
+        public event Func<RoleSelection, Task>? SelectionChanged;
+
+        public RoleSelection(ApplicationRoleDto role, bool isSelected)
+        {
+            Role = role;
+            IsSelected = isSelected;
+        }
+    }
+
+    private DotNetObjectReference<RolesSelector>? objRef;
+    private IHttpClientFactory? _httpClientFactory;
+    private List<RoleSelection> _roles = new();
+    private List<RoleSelection> _rolesFiltered = new();
+
+    private string _searchText = string.Empty;
+    private string IdScroll = string.Empty;
+    private int _rolesCount = 0;
+    private int _pageCount = 1;
+    private int _pageSize = int.MaxValue;
+    private bool? _selectAll { get; set; } = false;
+    private bool _loading { get; set; } = true;
+    private bool _loadingScroll { get; set; } = false;
+    private bool isRolesSend = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        IdScroll = "RolesContainer";
+        objRef = DotNetObjectReference.Create(this);
+
+        var initialRoles = InitialRoles.Select(p => new RoleSelection(p, true)).ToList();
+        _roles = initialRoles;
+
+        if (_rolesFiltered.Count(p => p.IsSelected) > 0)
+        {
+            if (_rolesFiltered.Count() != _rolesFiltered.Count(p => p.IsSelected))
+            {
+                _selectAll = null;
+            }
+            else
+            {
+                _selectAll = true;
+            }
+        }
+
+        await LoadData();
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Disable && !isRolesSend)
+        {
+            await LoadData();
+        }
+    }
+
+    private async Task OnSelectionChanged()
+    {
+        if (_rolesFiltered.Count(p => p.IsSelected) > 0)
+        {
+            if (_rolesFiltered.Count() != _rolesFiltered.Count(p => p.IsSelected))
+            {
+                _selectAll = null;
+            }
+            else
+            {
+                _selectAll = true;
+            }
+        }
+        else
+        {
+            _selectAll = false;
+        }
+
+        isRolesSend = true;
+        await RolesSend.InvokeAsync((_roles.Where(p => p.IsSelected).Select(p => p.Role).ToList(), Product));
+    }
+
+    private async Task LoadData()
+    {
+        IHttpClientFactory httpClientFactory = HttpClientFactory;
+        _httpClientFactory = httpClientFactory;
+
+        var client = httpClientFactory.CreateClient("CustomHttpClient");
+        var response = await client.GetAsync($"api/Roles/?product={Product}&currentPage={1}&pageSize={_pageSize}");
+
+        if (response.IsSuccessStatusCode)
+        {
+            var rolePagination = await response.Content.ReadFromJsonAsync<RolePagination>();
+
+            if (rolePagination?.Roles != null)
+            {
+                var initialRoles = InitialRoles.Select(p => new RoleSelection(p, true)).ToList();
+                _roles = initialRoles;
+
+                var updatedRoles = rolePagination.Roles
+                    .Select(p =>
+                        InitialRoles.Any(ip => ip.Id == p.Id)
+                        ? new RoleSelection(p, true)
+                        : new RoleSelection(p, false)
+                    )
+                    .ToList();
+
+                _roles = _roles
+                    .Concat(updatedRoles.Where(up => !_roles.Any(p => p.Role.Id == up.Role.Id)))
+                    .ToList();
+
+                _rolesFiltered = _roles;
+
+                foreach (var permission in _rolesFiltered)
+                {
+                    permission.SelectionChanged += async (p) => await OnSelectionChanged();
+                }
+
+                _rolesCount = rolePagination.TotalItems;
+            }
+        }
+    }
+
+    private void SelectAllItems(bool? value)
+    {
+        _selectAll = value == true;
+
+        foreach (var permission in _rolesFiltered)
+        {
+            permission.IsSelected = value == true;
+        }
+    }
+
+    private async Task SearchRole(string value)
+    {
+        _loading = true;
+        _searchText = value;
+
+        string url = _searchText.Equals(string.Empty)
+            ? $"api/Roles/?Product={Product}&CurrentPage={_pageCount}&PageSize=10"
+            : $"api/Roles/?Product={Product}&CurrentPage={_pageCount}&PageSize=10&SearchText={_searchText}";
+
+        var client = HttpClientFactory.CreateClient("CustomHttpClient");
+        var response = await client.GetAsync(url);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var rolePagination = await response.Content.ReadFromJsonAsync<RolePagination>();
+
+            if (rolePagination?.Roles != null)
+            {
+                _rolesCount = rolePagination.TotalItems;
+                _pageCount = 1;
+
+                var updatedRoles = rolePagination.Roles
+                    .Select(p =>
+                        InitialRoles.Any(ip => ip.Id == p.Id)
+                        ? new RoleSelection(p, true)
+                        : new RoleSelection(p, false)
+                    )
+                    .ToList();
+
+                if (updatedRoles != null)
+                {
+                    _roles = _roles
+                         .Concat(updatedRoles.Where(up => !_roles.Any(p => p.Role.Id == up.Role.Id)))
+                         .ToList();
+
+                    _rolesFiltered = _roles
+                        .Where(p => p.Role.Name.ToLower().Contains(_searchText.ToLower()))
+                        .ToList();
+
+                    foreach (var role in _rolesFiltered)
+                    {
+                        role.SelectionChanged += async (p) => await OnSelectionChanged();
+                    }
+
+                    StateHasChanged();
+                    _loading = false;
+                }
+            }
+        }
+    }
+
+    private void RemoveRole(string roleId)
+    {
+        var role = _roles.First(p => p.Role.Id == roleId);
+        role.IsSelected = false;
+    }
+
+    public void Dispose()
+    {
+        objRef?.Dispose();
+    }
+}

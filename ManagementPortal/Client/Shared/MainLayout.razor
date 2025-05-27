@@ -1,0 +1,374 @@
+﻿@using Dialogs
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.IdentityModel.Tokens.Jwt
+@using Blazored.LocalStorage
+@using ManagementPortal.Client.Pages
+@using ManagementPortal.Shared.Dtos
+
+@inherits LayoutComponentBase
+@inject ILocalStorageService LocalStorage
+@inject IStringLocalizer<AppLocalization> Loc
+@inject NavigationManager NavigationManager
+@inject Services.CustomAuthStateProvider AuthenticationStateProvider
+@inject Themes.CustomThemeProvider CustomThemeProvider
+@inject ISnackbar Snackbar
+@inject MessagingService MessagingService
+@inject IDialogService DialogService
+@inject IJSRuntime JSRuntime
+@inject IHttpClientFactory HttpClientFactory
+
+@* Required *@
+<MudPopoverProvider />
+
+@* Needed for dialogs *@
+<MudDialogProvider />
+
+@* Needed for snackbars *@
+<MudSnackbarProvider />
+
+<MudThemeProvider @bind-IsDarkMode="CustomThemeProvider.IsDarkMode" Theme="CustomThemeProvider.CustomTheme" />
+
+<MudLayout>
+    <AuthorizeView>
+        <Authorized>
+            <audio id="notificationPlayer" src="notification.wav"></audio>
+            <MudStack Row="true"
+                      Justify="Justify.SpaceBetween"
+                      AlignItems="AlignItems.Center"
+                      Style="height: 10vh; width:100%; background-color: var(--mud-palette-tertiary);"
+                      Class="py-4 px-4">
+                <MudStack Row="true">
+                    <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" OnClick="ToggleDrawer" Edge="Edge.Start" />
+                    <Logo Width="50px" Row="true" />
+                </MudStack>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    @if (MessagingService.UnreadMessages.Count() == 0)
+                    {
+                        <MudIconButton Icon="@(_notifications ? Icons.Material.Filled.Notifications : @Icons.Material.Filled.NotificationsOff)"
+                                       Color="Color.Default" Class="ma-0" />
+                    }
+                    else
+                    {
+                        <MudBadge Content="@(MessagingService.UnreadMessages.Count() )"
+                                  Color="Color.Info" Overlap="true">
+                            <MudIconButton OnClick="TogglePopover"
+                                           Icon="@(_notifications ? Icons.Material.Filled.Notifications : @Icons.Material.Filled.NotificationsOff)"
+                                           Color="Color.Default" Class="ma-0" />
+                        </MudBadge>
+                        <MudPopover Open="@_isPopoverOpen" Class="noti-popover rounded-lg" Fixed="true" OverflowBehavior="OverflowBehavior.FlipAlways"
+                                    AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopRight">
+                            @foreach (var notification in MessagingService.UnreadMessages.Skip((_currentPage - 1) * 5).Take(5))
+                            {
+                                <MudDivider />
+                                <MudListItem Value="notification"
+                                             @onclick="() => ToMessaging(notification.MessagingChannel.Name)">
+                                    <MudStack Row="true" Class="pr-2 pr-4">
+                                        <MudAvatar Color="Color.Info">
+                                            @if (notification.MessagingChannel.IsPrivate)
+                                            {
+                                                @notification.MessagingChannel.Name.Substring(0, 1).ToUpper()
+                                            }
+                                            else
+                                            {
+                                                <MudIcon Color="Color.Secondary" Icon="@Icons.Material.Filled.Groups" Size="Size.Large" />
+                                            }
+                                        </MudAvatar>
+                                        <MudStack>
+                                            <MudText Typo="Typo.subtitle2">
+                                                @notification.MessagingChannel.Name
+                                            </MudText>
+                                            <MudStack Row="true" Spacing="1">
+                                                <MudText Typo="Typo.caption">
+                                                    <b>@($"{notification?.User.Name}:")</b>
+                                                </MudText>
+                                                <MudText Typo="Typo.caption">
+                                                    @(notification?.Text?.Length > 50 
+                                                    ? notification.Text.Substring(0, 50) + "..." 
+                                                    : notification?.Text)
+                                                </MudText>
+                                            </MudStack>
+                                        </MudStack>
+                                    </MudStack>
+                                </MudListItem>
+                                <MudDivider />
+                            }
+                            @if (MessagingService.UnreadMessages.Count() > 5)
+                            {
+                                <div class="d-flex flex-column align-center py-2 noti-paginator">
+                                    <MudPagination BoundaryCount="1" @bind-Selected="_currentPage"
+                                                   Count="@((int)Math.Ceiling((double)MessagingService.UnreadMessages.Count() / 5))" />
+                                </div>
+                            }
+                        </MudPopover>
+                    }
+                    <UserPreferences />
+                    <MudMenu AriaLabel="Open user menu" Class="mx-2">
+                        <ActivatorContent>
+                            <MudAvatar>
+                                @if (_imageUrl.Equals(string.Empty))
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Person" />
+                                }
+                                else
+                                {
+                                    <MudImage Src="@_imageUrl" />
+                                }
+                            </MudAvatar>
+                        </ActivatorContent>
+                        <ChildContent>
+                            <MudMenuItem Icon="@Icons.Material.Filled.Person" @onclick="ToProfile">@Loc["myProfile"]</MudMenuItem>
+                            <MudMenuItem Icon="@(_notifications ? Icons.Material.Filled.Notifications : @Icons.Material.Filled.NotificationsOff)"
+                                         @onclick="ChangeNotifications">
+                                @Loc["notifications"]
+                            </MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Filled.Login" @onclick="Logout">@Loc["logOut"]</MudMenuItem>
+                        </ChildContent>
+                    </MudMenu>
+                </MudStack>
+            </MudStack>
+            <MudPaper Height="100%" Style="overflow:hidden; position:relative;">
+                <MudDrawerContainer Class="mud-height-full">
+                    <MudDrawer @bind-Open="@_open"
+                               Fixed="false"
+                               Elevation="2"
+                               Variant="@DrawerVariant.Mini"
+                               Style="background-color: var(--mud-palette-tertiary);">
+                        <Menu />
+                    </MudDrawer>
+                    <MudDrawerContainer>
+                        <MudStack style="min-height:90vh; background-color: var(--mud-palette-tertiary);"
+                                  Class="pa-2">
+                            @Body
+                        </MudStack>
+                    </MudDrawerContainer>
+                </MudDrawerContainer>
+            </MudPaper>
+        </Authorized>
+        <NotAuthorized>
+            @if (NavigationManager.Uri.Contains("resetPassword"))
+            {
+                <ResetPassword />
+            }
+            else
+            {
+                <Login />
+            }
+        </NotAuthorized>
+    </AuthorizeView>
+</MudLayout>
+
+<script>
+    function playNotification() {
+    document.getElementById('notificationPlayer').play()
+    }
+</script>
+
+@code {
+    private string _username = string.Empty;
+    private string _imageUrl = string.Empty;
+    private bool _open = false;
+    private bool _notifications = true;
+    private bool _isPopoverOpen;
+    private int _currentPage = 1;
+
+    private ConfirmActionDialog _customDialog = new();
+    private HttpClient _httpClient = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CustomThemeProvider.InitializeAsync();
+        AuthenticationStateProvider.AuthStateChanged += OnAuthStateChanged;
+
+        var token = await LocalStorage.GetItemAsync<string>("token");
+        if (token != null)
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var jwtToken = handler.ReadJwtToken(token);
+            _username = jwtToken.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.UniqueName)?.Value ?? string.Empty;
+
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var isAuthenticated = authState.User.Identity != null && authState.User.Identity.IsAuthenticated;
+
+            if (isAuthenticated)
+            {
+                _httpClient = HttpClientFactory.CreateClient("CustomHttpClient");
+                var response = await _httpClient.GetAsync($"api/Users/GetProfilePhoto/{_username}/");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadAsByteArrayAsync();
+
+                    var base64 = Convert.ToBase64String(result);
+
+                    if (base64 != null)
+                    {
+                        _imageUrl = ManagementPortal.Shared.Pictures.Base64ToPicture.ConvertToWebPicture(base64) ?? string.Empty;
+                    }
+                }
+
+                MessagingService.CreateHubConnection(token);
+                await MessagingService.StartAsync();
+
+                MessagingService.LoadNotification(ReceiveNotification);
+                MessagingService.LoadNotifications(ReceiveNotifications);
+                await MessagingService.GetNotifications();
+
+                MessagingService.MessagesChanged += OnMessagesChanged;
+            }
+        }
+    }
+
+    private async void OnAuthStateChanged(bool isAuthenticated)
+    {
+        DialogParameters parameters = new DialogParameters
+                                                                                        {
+            { "Message", Loc["sessionExpired"].Value },
+            { "Color", Color.Primary },
+            { "Icon", Icons.Material.Filled.Error },
+            { "ShowCancel", false},
+            { "CallBackOk", new EventCallback(this, async () => {_customDialog.Close(); await Logout(); })}
+                                                                                        };
+
+        DialogOptions options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+        var dialogError = await DialogService.ShowAsync<ConfirmActionDialog>("", parameters, options);
+
+        if (dialogError.Dialog != null)
+        {
+            _customDialog = (ConfirmActionDialog)dialogError.Dialog;
+        }
+    }
+
+    private async Task TogglePopover()
+    {
+        _isPopoverOpen = !_isPopoverOpen;
+
+        if (_isPopoverOpen)
+        {
+            await JSRuntime.InvokeVoidAsync("addClickAwayListener", DotNetObjectReference.Create(this));
+        }
+        else
+        {
+            await JSRuntime.InvokeVoidAsync("removeClickAwayListener");
+        }
+    }
+
+    [JSInvokable]
+    public async Task ClosePopover()
+    {
+        _isPopoverOpen = false;
+        StateHasChanged();
+        await JSRuntime.InvokeVoidAsync("removeClickAwayListener");
+    }
+
+    private void OnMessagesChanged()
+    {
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        MessagingService.MessagesChanged -= OnMessagesChanged;
+        AuthenticationStateProvider.AuthStateChanged -= OnAuthStateChanged;
+    }
+
+    private void ReceiveNotifications(List<MessageDto> unreadMessages)
+    {
+        foreach (var msg in unreadMessages)
+        {
+            MessagingService.AddUnreadMessage(msg);
+        }
+
+        StateHasChanged();
+    }
+
+    private async void ReceiveNotification(List<MessageDto> unreadMessages)
+    {
+        var message = unreadMessages.FirstOrDefault();
+
+        if (message != null && message.MessagingChannel.Id
+    .ToLower()
+    .Equals(MessagingService.ActiveChannel.Id.ToLower()))
+        {
+            return;
+        }
+
+        if (message == null)
+        {
+            return;
+        }
+
+        MessagingService.AddUnreadMessage(message);
+
+        var route = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+
+        if (route.Contains("messaging"))
+        {
+            return;
+        }
+
+        if (_notifications)
+        {
+            Snackbar.Add(
+    @<MudStack Row="true" Class="pr-2 pr-4" @onclick="@(() => ToMessaging(message.MessagingChannel.Name))"
+                   Style="cursor: pointer;">
+        <MudAvatar Style="@($"color: white; background-color: var(--mud-palette-info);")">
+            @if (message.MessagingChannel.IsPrivate)
+        {
+            @message.MessagingChannel.Name.Substring(0, 1).ToUpper()
+        }
+        else
+        {
+            <MudIcon Color="Color.Secondary" Icon="@Icons.Material.Filled.Groups" Size="Size.Large" />
+        }
+        </MudAvatar>
+        <MudStack>
+            <MudText Typo="Typo.subtitle2">
+                @message.MessagingChannel.Name
+            </MudText>
+            <MudStack Row="true" Spacing="1">
+                <MudText Typo="Typo.caption">
+                    <b>@message.User.UserName</b>
+                </MudText>
+                <MudText Typo="Typo.caption">
+                    @(message.Text.Length > 50 ? message.Text.Substring(0, 50) + "..." : message.Text)
+                </MudText>
+            </MudStack>
+        </MudStack>
+    </MudStack>
+    , Severity.Normal, config => { config.HideIcon = true; config.CloseAfterNavigation = true; }
+        );
+
+            await JSRuntime.InvokeVoidAsync("playNotification");
+        }
+    }
+
+    private void ToProfile()
+    {
+        NavigationManager.NavigateTo($"my_profile");
+    }
+
+    private async void ToMessaging(string channelName)
+    {
+        _isPopoverOpen = false;
+        await JSRuntime.InvokeVoidAsync("removeClickAwayListener");
+        NavigationManager.NavigateTo($"/messaging?channel={channelName}");
+    }
+
+    private async Task Logout()
+    {
+        await AuthenticationStateProvider.Logout();
+        NavigationManager.NavigateTo("/", true);
+    }
+
+    private void ChangeNotifications()
+    {
+        _notifications = !_notifications;
+        StateHasChanged();
+    }
+
+    private void ToggleDrawer()
+    {
+        _open = !_open;
+    }
+}

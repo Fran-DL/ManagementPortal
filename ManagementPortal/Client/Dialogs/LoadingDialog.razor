@@ -1,0 +1,17 @@
+﻿<MudDialog Class="custom-dialog">
+    <DialogContent>
+        <MudStack AlignItems="AlignItems.Center" Class="my-4">
+            <MudProgressCircular Color="Color.Primary" Style="height:70px;width:70px;" Indeterminate="true" />
+            <MudText Color="Color.Info">
+                @Message
+            </MudText>
+        </MudStack>
+    </DialogContent>
+</MudDialog>
+@code {
+    [Parameter]
+    public string Message { get; set; } = string.Empty;
+
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; }   = new MudDialogInstance();
+}

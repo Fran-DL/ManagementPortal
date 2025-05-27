@@ -1,0 +1,66 @@
+﻿@using ManagementPortal.Shared.Dtos
+@using ManagementPortal.Shared.Constants
+
+@inject IHttpClientFactory HttpClientFactory
+@inject IStringLocalizer<AppLocalization> Loc
+
+<MudDialog Class="custom-dialog">
+    <DialogContent>
+        <MudStack AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-2">
+                @Loc["welcomeBack2fa"]
+            </MudText>
+            <MudText Typo="Typo.h6" Align="Align.Center" Class="mb-4">
+                @Loc["choose2faMessage"]
+            </MudText>
+            <MudStack Row="true">
+                <MudChipSet T="string" SelectionMode="SelectionMode.SingleSelection">
+                    <MudChip Icon="@Icons.Material.Filled.AppBlocking"
+                             Text="App"
+                             OnClick="@(() => Submit("App"))"
+                             Variant="Variant.Text"
+                             Color="Color.Primary"
+                             Class="px-6 py-6">
+                    </MudChip>
+                    <MudChip Icon="@Icons.Material.Filled.MailLock"
+                             Text="Email"
+                             OnClick="@(() => Submit("Email"))"
+                             Variant="Variant.Text"
+                             Color="Color.Primary"
+                             Class="px-6 py-6">
+                    </MudChip>
+                </MudChipSet>
+            </MudStack>
+        </MudStack>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = new MudDialogInstance();
+
+    [Parameter]
+    public EventCallback<string> MethodSend { get; set; }
+
+    private bool _waiting { get; set; } = false;
+
+    private async void Submit(string method)
+    {
+        _waiting = true;
+
+        MudDialog.Close(DialogResult.Ok(true));
+        await MethodSend.InvokeAsync(method);
+
+        if (method.Equals("Email"))
+        {
+            var client = HttpClientFactory.CreateClient("CustomHttpClient");
+            client.DefaultRequestHeaders.Add("product", Products.ManagementPortal.ToString());
+            _ = await client.PostAsync("api/Account/SendCodeEmail", null);
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

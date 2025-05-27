@@ -1,0 +1,659 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="usernameField" xml:space="preserve">
+    <value>Nombre de usuario</value>
+  </data>
+  <data name="passwordField" xml:space="preserve">
+    <value>Contraseña</value>
+  </data>
+  <data name="logIn" xml:space="preserve">
+    <value>Iniciar Sesión</value>
+  </data>
+  <data name="Mensajeria" xml:space="preserve">
+    <value>Mensajería</value>
+  </data>
+  <data name="darkMode" xml:space="preserve">
+    <value>Modo Oscuro</value>
+  </data>
+  <data name="Inicio" xml:space="preserve">
+    <value>Inicio</value>
+  </data>
+  <data name="users" xml:space="preserve">
+    <value>Usuarios</value>
+  </data>
+  <data name="roles" xml:space="preserve">
+    <value>Roles</value>
+  </data>
+  <data name="Productos" xml:space="preserve">
+    <value>Productos</value>
+  </data>
+  <data name="myProfile" xml:space="preserve">
+    <value>Mi Perfil</value>
+  </data>
+  <data name="ActivosAssets" xml:space="preserve">
+    <value>Activos</value>
+  </data>
+  <data name="Eventos" xml:space="preserve">
+    <value>Eventos</value>
+  </data>
+  <data name="Otros" xml:space="preserve">
+    <value>Otros</value>
+  </data>
+  <data name="twoFactorDescription" xml:space="preserve">
+    <value>La autenticación de dos factores (2FA) es importante porque añade una capa extra de seguridad a tu cuenta.
+        Incluso si alguien obtiene tu contraseña, necesitaría un segundo factor, como un código en tu teléfono, para acceder.
+        Esto reduce el riesgo de accesos no autorizados y protege mejor tu información personal.</value>
+  </data>
+  <data name="twoFactorAppDescription" xml:space="preserve">
+    <value>Usa una aplicación de autenticación como tu autenticación de segundo factor (2FA).
+            Cuando inicies sesión, se te pedirá que utilices el código de seguridad proporcionado por tu aplicación de autenticación.</value>
+  </data>
+  <data name="twoFactorEmailDescription" xml:space="preserve">
+    <value>Usa un código de seguridad enviado a tu dirección de correo electrónico como tu autenticación de segundo factor (2FA).
+            El código de seguridad se enviará a la dirección asociada a tu cuenta de Management Portal.
+            Deberás usarlo cuando inicies sesión.</value>
+  </data>
+  <data name="twoFactorTitle" xml:space="preserve">
+    <value>Autenticación de dos factores</value>
+  </data>
+  <data name="changePasswordTitle" xml:space="preserve">
+    <value>Cambio de Contraseña</value>
+  </data>
+  <data name="changePassword" xml:space="preserve">
+    <value>Cambiar Contraseña</value>
+  </data>
+  <data name="enterOldPassword" xml:space="preserve">
+    <value>Ingrese su contraseña actual</value>
+  </data>
+  <data name="newPassword" xml:space="preserve">
+    <value>Nueva contraseña</value>
+  </data>
+  <data name="enterNewPassowrd" xml:space="preserve">
+    <value>Ingrese su nueva contraseña</value>
+  </data>
+  <data name="confirmPassword" xml:space="preserve">
+    <value>Confirme la contraseña</value>
+  </data>
+  <data name="enterPasswordAgain" xml:space="preserve">
+    <value>Ingrese nuevamente la contraseña</value>
+  </data>
+  <data name="Accept" xml:space="preserve">
+    <value>Aceptar</value>
+  </data>
+  <data name="changePasswordDescription" xml:space="preserve">
+    <value>Cambiar la contraseña regularmente garantiza la protección de la información sensible de la empresa y los datos personales frente a posibles accesos no autorizados. Recuerde que es imprescindible cambiar la contraseña luego de ser registrado en la plataforma.</value>
+  </data>
+  <data name="cancel" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="confirm" xml:space="preserve">
+    <value>Confirmar</value>
+  </data>
+  <data name="logOut" xml:space="preserve">
+    <value>Cerrar sesión</value>
+  </data>
+  <data name="home" xml:space="preserve">
+    <value>Inicio</value>
+  </data>
+  <data name="list" xml:space="preserve">
+    <value>Lista</value>
+  </data>
+  <data name="create" xml:space="preserve">
+    <value>Crear</value>
+  </data>
+  <data name="security" xml:space="preserve">
+    <value>Seguridad</value>
+  </data>
+  <data name="listRoles" xml:space="preserve">
+    <value>Listar Roles</value>
+  </data>
+  <data name="createRoles" xml:space="preserve">
+    <value>Crear Roles</value>
+  </data>
+  <data name="twoFactorAppTittle" xml:space="preserve">
+    <value>Aplicación de autenticación de dos factores</value>
+  </data>
+  <data name="enable" xml:space="preserve">
+    <value>Habilitar</value>
+  </data>
+  <data name="enabled" xml:space="preserve">
+    <value>Habilitado</value>
+  </data>
+  <data name="twoFactorEmailTittle" xml:space="preserve">
+    <value>Correo electrónico de autenticación de dos factores</value>
+  </data>
+  <data name="search" xml:space="preserve">
+    <value>Buscar</value>
+  </data>
+  <data name="nameField" xml:space="preserve">
+    <value>Nombre</value>
+  </data>
+  <data name="lastNameField" xml:space="preserve">
+    <value>Apellido</value>
+  </data>
+  <data name="emailField" xml:space="preserve">
+    <value>Email</value>
+  </data>
+  <data name="createUser" xml:space="preserve">
+    <value>CREAR USUARIO</value>
+  </data>
+  <data name="confirmPasswordField" xml:space="preserve">
+    <value>Confirmar contraseña</value>
+  </data>
+  <data name="description" xml:space="preserve">
+    <value>Descripción</value>
+  </data>
+  <data name="application" xml:space="preserve">
+    <value>Aplicación</value>
+  </data>
+  <data name="active" xml:space="preserve">
+    <value>Activo</value>
+  </data>
+  <data name="deleted" xml:space="preserve">
+    <value>Eliminado</value>
+  </data>
+  <data name="createRoleUpper" xml:space="preserve">
+    <value>CREAR ROL</value>
+  </data>
+  <data name="IngreseSuContrasena" xml:space="preserve">
+    <value>Ingrese la contraseña</value>
+  </data>
+  <data name="IngreseSuNombreDeUsuario" xml:space="preserve">
+    <value>Ingrese el nombre de usuario</value>
+  </data>
+  <data name="Ingresar" xml:space="preserve">
+    <value>Ingresar</value>
+  </data>
+  <data name="edit" xml:space="preserve">
+    <value>Editar</value>
+  </data>
+  <data name="save" xml:space="preserve">
+    <value>Guardar</value>
+  </data>
+  <data name="currentPassword" xml:space="preserve">
+    <value>Contraseña Actual</value>
+  </data>
+  <data name="updateRoleUpper" xml:space="preserve">
+    <value>ACTUALIZAR ROL</value>
+  </data>
+  <data name="passwordIniciateMessage" xml:space="preserve">
+    <value>Has ingresado por primera vez. Por favor cambia tu contraseña.</value>
+  </data>
+  <data name="passwordOrUserIncorrectMessage" xml:space="preserve">
+    <value>Contraseña o usuario incorrecto. Por favor reintentar.</value>
+  </data>
+  <data name="lastLoginField" xml:space="preserve">
+    <value>Ultimo login</value>
+  </data>
+  <data name="obtainAuthCodeMessage" xml:space="preserve">
+    <value>Obtener código de una aplicación de autentificación</value>
+  </data>
+  <data name="authIformatinMessage" xml:space="preserve">
+    <value> Cada vez que inicies sesión, además de tu contraseña,
+ usarás una aplicación de autentificación para generar un código de un solo uso.</value>
+  </data>
+  <data name="authAppStepOne" xml:space="preserve">
+    <value>Paso 1: Escanea el código QR a continuación o introduce manualmente la clave secreta en tu aplicación de autentificación.</value>
+  </data>
+  <data name="authAppStepTwo" xml:space="preserve">
+    <value>Paso 2: Introduce el código de 6 dígitos que ves en tu aplicación de autentificación.</value>
+  </data>
+  <data name="codeField" xml:space="preserve">
+    <value>Código</value>
+  </data>
+  <data name="obtainEmailCodeTittle" xml:space="preserve">
+    <value>Obtener código de verificación</value>
+  </data>
+  <data name="codeSentEmailMessage" xml:space="preserve">
+    <value>Te hemos enviado un código de verificación. Revisa tu correo electrónico o tu teléfono para obtenerlo.</value>
+  </data>
+  <data name="authEmailStepOne" xml:space="preserve">
+    <value> Paso 1: Ingresa el código de verificación de 6 dígitos que te hemos enviado.</value>
+  </data>
+  <data name="authEmailSuggestion" xml:space="preserve">
+    <value> Si no has recibido el código, revisa tu carpeta de spam o solicita un nuevo código.</value>
+  </data>
+  <data name="confirmNewPassword" xml:space="preserve">
+    <value>Confirmar contraseña nueva</value>
+  </data>
+  <data name="searchRole" xml:space="preserve">
+    <value>Buscar rol</value>
+  </data>
+  <data name="rolesAvailable" xml:space="preserve">
+    <value>{0} roles disponibles.</value>
+  </data>
+  <data name="noRolesSelected" xml:space="preserve">
+    <value>No se seleccionaron roles.</value>
+  </data>
+  <data name="rolesSelected" xml:space="preserve">
+    <value>{0} roles seleccionados.</value>
+  </data>
+  <data name="profile" xml:space="preserve">
+    <value>Perfil</value>
+  </data>
+  <data name="lastLogin" xml:space="preserve">
+    <value>Último login</value>
+  </data>
+  <data name="info" xml:space="preserve">
+    <value>Info</value>
+  </data>
+  <data name="delete" xml:space="preserve">
+    <value>Eliminar</value>
+  </data>
+  <data name="enterFirstName" xml:space="preserve">
+    <value>Ingrese el nombre</value>
+  </data>
+  <data name="enterLastName" xml:space="preserve">
+    <value>Ingrese el apellido</value>
+  </data>
+  <data name="enterEmail" xml:space="preserve">
+    <value>Ingrese el mail</value>
+  </data>
+  <data name="enterUsername" xml:space="preserve">
+    <value>Ingrese el nombre de usuario</value>
+  </data>
+  <data name="enterPassword" xml:space="preserve">
+    <value>Ingrese la contraseña</value>
+  </data>
+  <data name="createRole" xml:space="preserve">
+    <value>Crear rol</value>
+  </data>
+  <data name="enterRoleName" xml:space="preserve">
+    <value>Ingresa el nombre del rol</value>
+  </data>
+  <data name="selectApplication" xml:space="preserve">
+    <value>Seleccionar aplicación</value>
+  </data>
+  <data name="selectPermission" xml:space="preserve">
+    <value>Seleccionar permiso</value>
+  </data>
+  <data name="selectByGroup" xml:space="preserve">
+    <value>Seleccionar por grupo</value>
+  </data>
+  <data name="msgConfirmDeleteUserMP" xml:space="preserve">
+    <value>¿Estás seguro que quieres eliminar el usuario de Management Portal y todos sus productos asociados?</value>
+  </data>
+  <data name="msgDeletingUser" xml:space="preserve">
+    <value>Eliminando usuario...</value>
+  </data>
+  <data name="msgSuccessfulDeletion" xml:space="preserve">
+    <value>El usuario fue eliminado con éxito de Management Portal y todos sus productos.</value>
+  </data>
+  <data name="msgErrorDeletion" xml:space="preserve">
+    <value>Error al eliminar usuario. Reintentar.</value>
+  </data>
+  <data name="selectAll" xml:space="preserve">
+    <value>Seleccionar todo</value>
+  </data>
+  <data name="msgErrorChangePassword" xml:space="preserve">
+    <value>No se pudo cambiar la contraseña.</value>
+  </data>
+  <data name="close" xml:space="preserve">
+    <value>Cerrar</value>
+  </data>
+  <data name="msgSuccessfulPassword" xml:space="preserve">
+    <value>Contraseña cambiada con éxito.</value>
+  </data>
+  <data name="couldNotIngressSystem" xml:space="preserve">
+    <value>No se pudo ingresar al sistema.</value>
+  </data>
+  <data name="msgConfirmDeleteRole" xml:space="preserve">
+    <value>¿Estás seguro que quieres eliminar el rol? El rol puede estar asignado a uno o varios usuarios.</value>
+  </data>
+  <data name="permissions" xml:space="preserve">
+    <value>Permisos</value>
+  </data>
+  <data name="OnePermissionRequired" xml:space="preserve">
+    <value>Se debe seleccionar al menos un permiso.</value>
+  </data>
+  <data name="RoleCreationConfirm" xml:space="preserve">
+    <value>Rol creado con éxito.</value>
+  </data>
+  <data name="descriptionDummie" xml:space="preserve">
+    <value>Soy una descripción de un producto de Sonda.</value>
+  </data>
+  <data name="inactive" xml:space="preserve">
+    <value>Eliminado</value>
+  </data>
+  <data name="msgSuccesfulRoleModification" xml:space="preserve">
+    <value>Se ha modificado exitosamente el rol.</value>
+  </data>
+  <data name="msgMustSelectAtLeastOnePermission" xml:space="preserve">
+    <value>Debes seleccionar al menos un permiso.</value>
+  </data>
+  <data name="msgRoleAlreadyExists" xml:space="preserve">
+    <value>El rol ya existe.</value>
+  </data>
+  <data name="roleCreatedSuccessfully" xml:space="preserve">
+    <value>Rol creado exitosamente.</value>
+  </data>
+  <data name="UpdateProductsError" xml:space="preserve">
+    <value>Actualización de productos con errores.</value>
+  </data>
+  <data name="UpdateProductsSuccessfully" xml:space="preserve">
+    <value>Actualización de productos correcta.</value>
+  </data>
+  <data name="Audit" xml:space="preserve">
+    <value>Auditoria</value>
+  </data>
+  <data name="roleDeleteError" xml:space="preserve">
+    <value>No se pudo eliminar el rol. Reintentar.</value>
+  </data>
+  <data name="successfulRoleDelete" xml:space="preserve">
+    <value>Rol eliminado con éxito.</value>
+  </data>
+  <data name="resetPassword" xml:space="preserve">
+    <value>Restablecer contraseña</value>
+  </data>
+  <data name="msgErrorDeleteMyUser" xml:space="preserve">
+    <value>No es posible eliminar su propia cuenta.</value>
+  </data>
+  <data name="enter2faAppSuggestion" xml:space="preserve">
+    <value>Ingresa el código que figura en tu app de autenticación</value>
+  </data>
+  <data name="enter2faEmailSuggestion" xml:space="preserve">
+    <value>Ingresa el código que enviamos a tu correo.</value>
+  </data>
+  <data name="2faErrorMessage" xml:space="preserve">
+    <value>No se pudo comprobar el factor de doble autenticación.</value>
+  </data>
+  <data name="2faSuccessMessage" xml:space="preserve">
+    <value>Autenticación de dos factores habilitada con éxito.</value>
+  </data>
+  <data name="choose2faMessage" xml:space="preserve">
+    <value>Selecciona tu método de autenticación.</value>
+  </data>
+  <data name="welcomeBack2fa" xml:space="preserve">
+    <value>¡Bienvenido de nuevo!</value>
+  </data>
+  <data name="recoverPassword" xml:space="preserve">
+    <value>Recuperar contraseña</value>
+  </data>
+  <data name="loginError" xml:space="preserve">
+    <value>No se pudo iniciar sesión.</value>
+  </data>
+  <data name="enterUserSuggestion" xml:space="preserve">
+    <value>Debe ingresar el username al cual quiere restablecer la contraseña</value>
+  </data>
+  <data name="confirmRecoverPassword" xml:space="preserve">
+    <value>¿Esta seguro que quiere restablecer la contraseña?</value>
+  </data>
+  <data name="sendingEmail" xml:space="preserve">
+    <value>Enviando mail...</value>
+  </data>
+  <data name="sentEmailResetPassword" xml:space="preserve">
+    <value>Se ha enviado un mail a su cuenta asociada para restablecer su contraseña.</value>
+  </data>
+  <data name="errorSendEmail" xml:space="preserve">
+    <value>Ha ocurrido un erro al mandarte un mail para restablecer la contraseña, por favor intente de nuevo.</value>
+  </data>
+  <data name="confirmNewPasswordRes" xml:space="preserve">
+    <value>Confirme su contraseña nueva</value>
+  </data>
+  <data name="2faErrorRedirectLogin" xml:space="preserve">
+    <value>No se ha podido validar el 2FA, le redirigiremos al login</value>
+  </data>
+  <data name="errorRedirectLogin" xml:space="preserve">
+    <value>Ha ocurrido un error, le redirigiremos al login</value>
+  </data>
+  <data name="notAllowedResetPassword" xml:space="preserve">
+    <value>No esta habilitado a resetear la contraseña, redirigase al login</value>
+  </data>
+  <data name="resetPasswordSuccess" xml:space="preserve">
+    <value>Ha cambiado su contraseña con éxito</value>
+  </data>
+  <data name="resetPasswordError" xml:space="preserve">
+    <value>Ha ocurrido un error al cambiar su contraseña</value>
+  </data>
+  <data name="twoFactorCode" xml:space="preserve">
+    <value>Código de dos factores</value>
+  </data>
+  <data name="startDate" xml:space="preserve">
+    <value>Fecha de Inicio</value>
+  </data>
+  <data name="endDate" xml:space="preserve">
+    <value>Fecha de finalización</value>
+  </data>
+  <data name="timeStamp" xml:space="preserve">
+    <value>Marca de tiempo</value>
+  </data>
+  <data name="action" xml:space="preserve">
+    <value>Acción</value>
+  </data>
+  <data name="userID" xml:space="preserve">
+    <value>ID de Usuario</value>
+  </data>
+  <data name="IPAddress" xml:space="preserve">
+    <value>Dirección IP</value>
+  </data>
+  <data name="message" xml:space="preserve">
+    <value>Mensaje</value>
+  </data>
+  <data name="startTime" xml:space="preserve">
+    <value>Hora de Inicio</value>
+  </data>
+  <data name="endTime" xml:space="preserve">
+    <value>Tiempo de finalización</value>
+  </data>
+  <data name="level" xml:space="preserve">
+    <value>Nivel</value>
+  </data>
+  <data name="msgCreateUserSuccess" xml:space="preserve">
+    <value>Usuario creado con éxito.</value>
+  </data>
+  <data name="msgAccessProductError" xml:space="preserve">
+    <value>No se pudo acceder al producto</value>
+  </data>
+  <data name="homeDummy" xml:space="preserve">
+    <value>Inicio</value>
+  </data>
+  <data name="welcomeTo" xml:space="preserve">
+    <value>Bienvenido a</value>
+  </data>
+  <data name="returnToMP" xml:space="preserve">
+    <value>Regresar a MP</value>
+  </data>
+  <data name="returnToHome" xml:space="preserve">
+    <value>Navegar al inicio</value>
+  </data>
+  <data name="ResourceNotFound" xml:space="preserve">
+    <value>No se pudo encontrar el recurso.</value>
+  </data>
+  <data name="checkFields" xml:space="preserve">
+    <value>Revisa los campos ingresados.</value>
+  </data>
+  <data name="updateUserSuccess" xml:space="preserve">
+    <value>Usuario modificado con éxito.</value>
+  </data>
+  <data name="statusAusent" xml:space="preserve">
+    <value>No presenta</value>
+  </data>
+  <data name="redirectMessage" xml:space="preserve">
+    <value>Reingresando en la aplicación.</value>
+  </data>
+  <data name="descChangePassword" xml:space="preserve">
+    <value>            Por razones de seguridad, se recomienda actualizar tu contraseña periódicamente.
+            Asegúrate de elegir una contraseña que contenga al menos 8 caracteres, combinando letras,
+            números y símbolos especiales para aumentar su seguridad.</value>
+  </data>
+  <data name="createGroup" xml:space="preserve">
+    <value>Crear Grupo</value>
+  </data>
+  <data name="groupName" xml:space="preserve">
+    <value>Nombre del grupo</value>
+  </data>
+  <data name="notifications" xml:space="preserve">
+    <value>Notificaciones</value>
+  </data>
+  <data name="sessionExpired" xml:space="preserve">
+    <value>La sesión expiró. Vuelve a ingresar.</value>
+  </data>
+  <data name="searchUsersNoResults" xml:space="preserve">
+    <value>No se encontraron usuarios.</value>
+  </data>
+  <data name="deletingRole" xml:space="preserve">
+    <value>Eliminando el rol. Por favor aguarde.</value>
+  </data>
+  <data name="generateAuthCodeError" xml:space="preserve">
+    <value>No se pudo generar el código de autenticación.</value>
+  </data>
+  <data name="delete2FASuccess" xml:space="preserve">
+    <value>Metodo de autenticación eliminado.</value>
+  </data>
+  <data name="delete2FAError" xml:space="preserve">
+    <value>No se pudo eliminar el metodo de autenticación.</value>
+  </data>
+  <data name="fileIsNotAnImage" xml:space="preserve">
+    <value>El archivo no es una imagen</value>
+  </data>
+  <data name="fileSize" xml:space="preserve">
+    <value>El tamaño del archivo no puede ser mayor a 2 MB.</value>
+  </data>
+  <data name="Signature" xml:space="preserve">
+    <value>Signature</value>
+  </data>
+  <data name="Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="TenantId" xml:space="preserve">
+    <value>TenantId</value>
+  </data>
+  <data name="ExternalIds" xml:space="preserve">
+    <value>ExternalIds</value>
+  </data>
+  <data name="logo" xml:space="preserve">
+    <value>Smart Platform</value>
+  </data>
+  <data name="msgRoleNameLenghtError" xml:space="preserve">
+    <value>El nombre del rol es demasiado largo.</value>
+  </data>
+  <data name="noChannels" xml:space="preserve">
+    <value>Aún no tienes conversaciones abiertas. Usa el buscador para encontrar un usuario y comenzar a chatear.</value>
+  </data>
+  <data name="msgConfirmDeleteUserFrom" xml:space="preserve">
+    <value>¿Estás seguro que quieres eliminar al usuario de</value>
+  </data>
+  <data name="msgSuccessfulDeletionFrom" xml:space="preserve">
+    <value>El usuario fue eliminado con éxito de</value>
+  </data>
+  <data name="messaging" xml:space="preserve">
+    <value>Mensajería</value>
+  </data>
+</root>

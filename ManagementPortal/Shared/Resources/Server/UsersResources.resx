@@ -1,0 +1,228 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="InvalidRole" xml:space="preserve">
+    <value>El usuario no tiene el permiso requerido</value>
+  </data>
+  <data name="UserNotFound" xml:space="preserve">
+    <value>Usuario no encontrado</value>
+  </data>
+  <data name="AssignRoleError" xml:space="preserve">
+    <value>Error al asignarle roles al usuario</value>
+  </data>
+  <data name="CreateUserError" xml:space="preserve">
+    <value>Error al crear usuario</value>
+  </data>
+  <data name="UsernameRequired" xml:space="preserve">
+    <value>El parámetro 'username' es requerido</value>
+  </data>
+  <data name="UserDeleted" xml:space="preserve">
+    <value>Usuario desactivado correctamente</value>
+  </data>
+  <data name="NameRequired" xml:space="preserve">
+    <value>El parámetro 'Nombre' es requerido</value>
+  </data>
+  <data name="LastNameRequired" xml:space="preserve">
+    <value>El parámetro 'Apellido' es requerido</value>
+  </data>
+  <data name="EmailExists" xml:space="preserve">
+    <value>El correo ingresado se encuentra en uso</value>
+  </data>
+  <data name="EmailRequired" xml:space="preserve">
+    <value>El parámetro 'Email' es requerido</value>
+  </data>
+  <data name="ModifyFailed" xml:space="preserve">
+    <value>No se pudo realizar la modificación. Reintenta</value>
+  </data>
+  <data name="IdRequired" xml:space="preserve">
+    <value>El parámetro 'Id' es requerido</value>
+  </data>
+  <data name="PasswordChanged" xml:space="preserve">
+    <value>La contraseña ha sido cambiada exitosamente</value>
+  </data>
+  <data name="UserIsDeleted" xml:space="preserve">
+    <value>El usuario esta desactivado</value>
+  </data>
+  <data name="UpdateProductUser_completed" xml:space="preserve">
+    <value>Proceso completado</value>
+  </data>
+  <data name="Produced_error" xml:space="preserve">
+    <value>Se produjo un error</value>
+  </data>
+  <data name="ProductToDeleteNotFound" xml:space="preserve">
+    <value>No se encontró el producto a eliminar</value>
+  </data>
+  <data name="DeleteSucces" xml:space="preserve">
+    <value>Fue borrado correctamente</value>
+  </data>
+  <data name="FailAPIrequest" xml:space="preserve">
+    <value>Falló en la solicitud API</value>
+  </data>
+  <data name="NotUpdateDB" xml:space="preserve">
+    <value>No pudo ser actualizado en la base de datos</value>
+  </data>
+  <data name="AddSuccess" xml:space="preserve">
+    <value>Fue dado de alta correctamente</value>
+  </data>
+  <data name="NotDeleteDB" xml:space="preserve">
+    <value>No pudo ser eliminado de la base de datos</value>
+  </data>
+  <data name="ProductDeleteBefore" xml:space="preserve">
+    <value>No se puede agregar el producto porque el usuario fue eliminado anteriormente</value>
+  </data>
+  <data name="UserEmailAlreadyExists" xml:space="preserve">
+    <value>El email {0} ya se encuentra en uso </value>
+  </data>
+  <data name="UserNameAlreadyExists" xml:space="preserve">
+    <value>El nombre de usuario {0} ya está en uso</value>
+  </data>
+  <data name="FileNotValid" xml:space="preserve">
+    <value>Archivo no valido</value>
+  </data>
+  <data name="ImageNotUpdated" xml:space="preserve">
+    <value>La imagen del usuario no pudo ser actualizada</value>
+  </data>
+  <data name="ImageUpdateSuccess" xml:space="preserve">
+    <value>Imagen actualizada con éxito</value>
+  </data>
+  <data name="ImageNotFound" xml:space="preserve">
+    <value>Imagen o usuario no encontrad</value>
+  </data>
+  <data name="RemoveRolesFromUserError" xml:space="preserve">
+    <value>No se pudieron eliminar los roles actuales del usuario.</value>
+  </data>
+  <data name="AddRolesUserError" xml:space="preserve">
+    <value>No se pudieron asignar los nuevos roles al usuario.</value>
+  </data>
+  <data name="modifySuccess" xml:space="preserve">
+    <value>Edición del usuario exitosa.</value>
+  </data>
+  <data name="UserProduct_externalIds" xml:space="preserve">
+    <value>No se envió el campo ExternalIds</value>
+  </data>
+  <data name="NoAccessProduct" xml:space="preserve">
+    <value>Usted no tiene acceso a este producto</value>
+  </data>
+  <data name="DeleteYourselfInvalid" xml:space="preserve">
+    <value>No es posible eliminar su propia cuenta.</value>
+  </data>
+  <data name="UserNotAuth" xml:space="preserve">
+    <value>Usuario no autenticado.</value>
+  </data>
+</root>

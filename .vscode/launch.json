@@ -1,0 +1,11 @@
+{
+    "configurations": [
+        {
+            "name": "C#: ManagementPortal.Server [HTTPS]",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}\\ManagementPortal\\Server\\ManagementPortal.Server.csproj",
+            "launchConfigurationId": "TargetFramework=;HTTPS",
+        }
+    ]
+}

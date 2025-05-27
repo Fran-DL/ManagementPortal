@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="145.22266"
+   viewBox="0 0 145.22266 146.27344"
+   height="146.27344"
+   version="1.0"
+   id="svg70"
+   sodipodi:docname="IoT vectorial.svg"
+   inkscape:export-filename="C:\Users\Johnatan.Stanley\Sonda S.A\IoT Platform - Documents\Dev\Logo\IoT 512x5122.png"
+   inkscape:export-xdpi="335.81537"
+   inkscape:export-ydpi="335.81537"
+   inkscape:version="1.1.2 (b8e25be833, 2022-02-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview72"
+     pagecolor="#ffffff"
+     bordercolor="#111111"
+     borderopacity="1"
+     inkscape:pageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     showgrid="false"
+     inkscape:zoom="2.216"
+     inkscape:cx="169.44946"
+     inkscape:cy="134.9278"
+     inkscape:window-width="1920"
+     inkscape:window-height="1017"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg70" />
+  <defs
+     id="defs38">
+    <clipPath
+       id="d">
+      <path
+         d="M 0.558594,0.359375 H 118 V 117.71875 H 0.558594 Z m 0,0"
+         id="path2" />
+    </clipPath>
+    <clipPath
+       id="c">
+      <path
+         d="M 0,0 H 119 V 118 H 0 Z"
+         id="path5" />
+    </clipPath>
+    <clipPath
+       id="g">
+      <path
+         d="M 0.28125,1 H 117.64063 V 118.28125 H 0.28125 Z m 0,0"
+         id="path8" />
+    </clipPath>
+    <clipPath
+       id="f">
+      <path
+         d="M 0,0 H 118 V 119 H 0 Z"
+         id="path11" />
+    </clipPath>
+    <clipPath
+       id="j">
+      <path
+         d="M 0.878906,0.078125 H 118 V 117.44141 H 0.878906 Z m 0,0"
+         id="path14" />
+    </clipPath>
+    <clipPath
+       id="i">
+      <path
+         d="M 0,0 H 119 V 118 H 0 Z"
+         id="path17" />
+    </clipPath>
+    <mask
+       id="b">
+      <g
+         filter="url(#a)"
+         id="g22">
+        <path
+           fill-opacity="0.749"
+           d="m -37.5,-37.5 h 450 v 450 h -450 z"
+           id="path20" />
+      </g>
+    </mask>
+    <mask
+       id="e">
+      <g
+         filter="url(#a)"
+         id="g27">
+        <path
+           fill-opacity="0.749"
+           d="m -37.5,-37.5 h 450 v 450 h -450 z"
+           id="path25" />
+      </g>
+    </mask>
+    <mask
+       id="h">
+      <g
+         filter="url(#a)"
+         id="g32">
+        <path
+           fill-opacity="0.749"
+           d="m -37.5,-37.5 h 450 v 450 h -450 z"
+           id="path30" />
+      </g>
+    </mask>
+    <filter
+       x="0"
+       y="0"
+       width="1"
+       xlink:type="simple"
+       xlink:actuate="onLoad"
+       height="1"
+       id="a"
+       xlink:show="other">
+      <feColorMatrix
+         values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0"
+         color-interpolation-filters="sRGB"
+         id="feColorMatrix35" />
+    </filter>
+  </defs>
+  <g
+     mask="url(#b)"
+     id="g48"
+     transform="translate(-100.70703,-52.191406)">
+    <g
+       id="g46">
+      <g
+         clip-path="url(#c)"
+         transform="translate(100,81)"
+         id="g44">
+        <g
+           clip-path="url(#d)"
+           id="g42">
+          <path
+             fill="#48c5d0"
+             d="M 0.707031,0.464844 H 117.70703 V 117.46484 H 0.707031 V 0.464844"
+             id="path40" />
+        </g>
+      </g>
+    </g>
+  </g>
+  <g
+     mask="url(#e)"
+     id="g58"
+     transform="translate(-100.70703,-52.191406)">
+    <g
+       id="g56">
+      <g
+         clip-path="url(#f)"
+         transform="translate(113,67)"
+         id="g54">
+        <g
+           clip-path="url(#g)"
+           id="g52">
+          <path
+             fill="#008eca"
+             d="M 0.390625,1.035156 H 117.39063 V 118.03516 H 0.390625 V 1.035156"
+             id="path50" />
+        </g>
+      </g>
+    </g>
+  </g>
+  <g
+     mask="url(#h)"
+     id="g68"
+     transform="translate(-100.70703,-52.191406)">
+    <g
+       id="g66">
+      <g
+         clip-path="url(#i)"
+         transform="translate(128,52)"
+         id="g64">
+        <g
+           clip-path="url(#j)"
+           id="g62">
+          <path
+             fill="#00539b"
+             d="M 0.929688,0.191406 H 117.92969 V 117.19141 H 0.929688 V 0.191406"
+             id="path60" />
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

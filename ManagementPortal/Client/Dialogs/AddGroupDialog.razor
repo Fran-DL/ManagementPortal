@@ -1,0 +1,116 @@
+﻿@using ManagementPortal.Shared.Dtos
+@using ManagementPortal.Shared.Constants
+
+@inject IStringLocalizer<AppLocalization> Loc
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@inject Services.CustomAuthStateProvider CustomAuthStateProvider
+@inject IDialogService DialogService
+
+<MudDialog Class="custom-dialog" DefaultFocus="DefaultFocus.None" Style="width:400px;">
+    <DialogContent>
+        <MudPaper Elevation="0">
+            <MudStack AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.h6" Align="Align.Center">
+                    @Loc["createGroup"]
+                </MudText>
+                <MudAvatar Color="Color.Primary" Variant="Variant.Outlined"
+                           Style="height:90px; width:90px;">
+                    <MudIcon Icon="@Icons.Material.Filled.GroupAdd" Style="font-size:3rem;" />
+                </MudAvatar>
+                <MudTextField T="string"
+                              FullWidth
+                              Immediate="true"
+                              Label=@Loc["groupName"]
+                              @bind-Value="_channelName"
+                              Margin="Margin.Dense"
+                              Variant="Variant.Outlined" />
+                <SearchUsers Margin="Margin.Dense" Disabled="false" UserSend="OnUserSend" />
+            </MudStack>
+        </MudPaper>
+        <MudList T="string" Class="overflow-y-scroll mt-2" Style="@($"height: 40vh;")">
+            @foreach (var user in _users)
+            {
+                <MudListItem>
+                    <AvatarContent>
+                        <MudStack Row AlignItems="AlignItems.Center" Class="pr-2">
+                            <MudIconButton Icon="@Icons.Material.Filled.Remove"
+                                           Color="Color.Primary"
+                                           OnClick="@(() => RemoveUser(user))"
+                                           Size="Size.Small" />
+                            <MudAvatar Color="Color.Info">
+                                <MudIcon Icon="@Icons.Material.Filled.Person" />
+                            </MudAvatar>
+                        </MudStack>
+                    </AvatarContent>
+                    <ChildContent>
+                        <MudText Typo="Typo.subtitle1">@user.UserName</MudText>
+                        <MudText Typo="Typo.subtitle2">@user.Email</MudText>
+                    </ChildContent>
+                </MudListItem>
+            }
+        </MudList>
+    </DialogContent>
+    <DialogActions>
+        <CustomButton OnClick="Cancel" Text="@Loc["cancel"]" Width="100" />
+        <CustomButton OnClick="Submit" Color="Color.Success" Text="@Loc["confirm"]" Width="100" />
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = new MudDialogInstance();
+
+    [Parameter]
+    public EventCallback<(string, List<ApplicationUserDto>)> CallBackSubmit { get; set; }
+
+    private ConfirmActionDialog _customDialog = new();
+
+    private List<ApplicationUserDto> _users = new();
+    private string _channelName = string.Empty;
+
+    private void OnUserSend(ApplicationUserDto user)
+    {
+        if (!_users.Any(u => u.Id.Equals(user.Id)))
+        {
+            _users.Add(user);
+            StateHasChanged();
+        }
+    }
+
+    private void RemoveUser(ApplicationUserDto user)
+    {
+        _users.Remove(user);
+        StateHasChanged();
+    }
+
+    private async Task Submit()
+    {
+        if (!_channelName.Equals(string.Empty))
+        {
+            await CallBackSubmit.InvokeAsync((_channelName, _users));
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else
+        {
+            DialogParameters parametersError = new DialogParameters
+            {
+                { "Message", "Debes ingresar un nombre para el grupo." },
+                { "Color", Color.Primary },
+                { "Icon", Icons.Material.Filled.Error },
+                { "ShowCancel", false},
+                { "CallBackOk", new EventCallback(this, () => _customDialog.Close())}
+            };
+
+            DialogOptions optionsError = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+            var dialogError = await DialogService.ShowAsync<ConfirmActionDialog>("", parametersError, optionsError);
+
+            if (dialogError.Dialog != null)
+            {
+                _customDialog = (ConfirmActionDialog)dialogError.Dialog;
+            }
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

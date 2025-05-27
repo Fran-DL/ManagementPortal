@@ -1,0 +1,390 @@
+﻿@page "/create_user"
+@attribute [Authorize(Roles = "CreateUser")]
+
+@using Microsoft.AspNetCore.Authorization
+@using Dialogs
+@using ManagementPortal.Shared.Dtos
+@using ManagementPortal.Shared.Constants
+@using System.Net.Http.Json
+
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@inject IStringLocalizer<AppLocalization> Loc
+@inject IJSRuntime JSRuntime
+
+<MudTabs @key="@pageKey" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" Color="Color.Secondary" SliderColor="Color.Primary">
+    <MudTabPanel Text=@Loc["createUser"] Disabled="true" Style="color: var(--mud-palette-text-primary);">
+        <EditForm OnValidSubmit="PostNewUser" EditContext="_editContext" class="py-4 px-2">
+            <DataAnnotationsValidator />
+            <MudStack Row="true">
+                <MudGrid Spacing="4">
+                    <MudItem sm="12" md="3" lg="3">
+                        <MudStack AlignItems="AlignItems.Center">
+                            <MudAvatar Color="Color.Primary" Variant="Variant.Outlined"
+                                       Style="height:150px; width:150px;">
+                                @if (_imageUrl != null)
+                                {
+                                    <MudImage Src="@_imageUrl" />
+
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Person" Style="font-size:5rem;" />
+
+                                }
+                            </MudAvatar>
+                            <MudFileUpload T="IBrowserFile" FilesChanged="UploadImage" Accept=".png, .jpg">
+                                <ActivatorContent>
+                                    <MudFab Color="Color.Dark"
+                                            DropShadow="false"
+                                            StartIcon="@Icons.Material.Filled.PhotoCamera" />
+                                </ActivatorContent>
+                            </MudFileUpload>
+                        </MudStack>
+                    </MudItem>
+                    <MudItem sm="12" md="6" lg="6">
+                        <MudStack>
+                            <MudStack Row="true" Spacing="4" Justify="Justify.SpaceAround">
+                                <MudStack Style="width: 300px;">
+                                    <MudTextField @bind-Value="model.Name"
+                                                  Class="mt-0"
+                                                  For="@(() => model.Name)"
+                                                  Margin="Margin.Dense"
+                                                  HelperText=@Loc["enterFirstName"]
+                                                  Variant="Variant.Outlined" />
+                                </MudStack>
+                                <MudStack Style="width: 300px;">
+                                    <MudTextField @bind-Value="model.LastName"
+                                                  Class="mt-0"
+                                                  For="@(() => model.LastName)"
+                                                  Margin="Margin.Dense"
+                                                  HelperText=@Loc["enterLastName"]
+                                                  Variant="Variant.Outlined" />
+                                </MudStack>
+                            </MudStack>
+                            <MudStack Row="true" Spacing="4" Justify="Justify.SpaceAround">
+                                <MudStack Style="width: 300px;">
+                                    <MudTextField @bind-Value="model.Email"
+                                                  For="@(() => model.Email)"
+                                                  Margin="Margin.Dense"
+                                                  HelperText=@Loc["enterEmail"]
+                                                  Variant="Variant.Outlined" />
+                                </MudStack>
+                                <MudStack Style="width: 300px;">
+                                    <MudTextField @bind-Value="model.UserName"
+                                                  For="@(() => model.UserName)"
+                                                  Margin="Margin.Dense"
+                                                  HelperText=@Loc["enterUsername"]
+                                                  Variant="Variant.Outlined" />
+                                </MudStack>
+                            </MudStack>
+                            <MudStack Row="true" Spacing="4" Justify="Justify.SpaceAround">
+                                <MudStack Style="width: 300px;">
+                                    <MudTextField @bind-Value="model.Password"
+                                                  Class="mb-0"
+                                                  For="@(() => model.Password)"
+                                                  Margin="Margin.Dense"
+                                                  HelperText=@Loc["enterPassword"]
+                                                  InputType="@PasswordInput"
+                                                  Immediate="true"
+                                                  TextChanged="ValidateEditContext"
+                                                  Adornment="Adornment.End"
+                                                  AdornmentIcon="@PasswordInputIcon"
+                                                  OnAdornmentClick="ButtonPasswordClick"
+                                                  Variant="Variant.Outlined" />
+                                </MudStack>
+                                <MudStack Style="width: 300px;">
+                                    <MudTextField @bind-Value="model.ConfirmPassword"
+                                                  Class="mb-0"
+                                                  For="@(() => model.ConfirmPassword)"
+                                                  Margin="Margin.Dense"
+                                                  HelperText=@Loc["confirmPassword"]
+                                                  InputType="@ConfirmPasswordInput"
+                                                  Immediate="true"
+                                                  TextChanged="ValidateEditContext"
+                                                  Adornment="Adornment.End"
+                                                  AdornmentIcon="@ConfirmPasswordInputIcon"
+                                                  OnAdornmentClick="ButtonConfirmPasswordClick"
+                                                  Variant="Variant.Outlined" />
+                                </MudStack>
+                            </MudStack>
+                        </MudStack>
+                    </MudItem>
+                    <MudItem sm="12" md="3" lg="3">
+                        <MudStack Class="mud-height-full" Spacing="1">
+                            <MudToggleGroup T="Products"
+                                            SelectionMode="SelectionMode.MultiSelection"
+                                            @bind-Values="_selectedProducts"
+                                            Delimiters="false"
+                                            Vertical="true"
+                                            Class="flex-grow-1"
+                                            Outlined="true" Size="Size.Small"
+                                            FixedContent="false"
+                                            Color="Color.Primary"
+                                            CheckMark="true">
+                                @foreach (var product in _products.Where(p => p != Products.ManagementPortal).OrderBy(p => p.ToString()))
+                                {
+                                    <MudToggleItem Value="product" Class="justify-start pl-4"
+                                                   UnselectedIcon="@Icons.Material.Filled.CheckBoxOutlineBlank"
+                                                   SelectedIcon="@Icons.Material.Filled.CheckBox" />
+
+                                }
+                            </MudToggleGroup>
+                            <MudText Typo="Typo.caption">@Loc["Productos"]</MudText>
+                        </MudStack>
+                    </MudItem>
+                    <MudItem sm="12" md="12" lg="12">
+                        <MudStack>
+                            <MudTabs Outlined="true" Rounded="true" Border="true"
+                                     ApplyEffectsToContainer="true" PanelClass="pa-2" Class="mud-width-full">
+                                <MudTabPanel Text="@Products.ManagementPortal.ToString()">
+                                    <RolesSelector RolesSend="OnRolesSend"
+                                                   Product="@Products.ManagementPortal"
+                                                   InitialRoles="_userProducts[Products.ManagementPortal].Roles"
+                                                   Disable="@(!(_selectedProducts.Count() > 0))" />
+
+                                </MudTabPanel>
+                                @foreach (var product in _selectedProducts.Where(p => p != Products.ManagementPortal).OrderBy(p => p.ToString()))
+                                {
+                                    <MudTabPanel Text="@product.ToString()">
+                                        <MudStack>
+                                            <RolesSelector RolesSend="OnRolesSend" @key="@product"
+                                                           Product="@product"
+                                                           InitialRoles="_userProducts[product].Roles"
+                                                           Disable="@(!(_selectedProducts.Count() > 0))" />
+                                            <MudGrid Spacing="0">
+                                                <MudItem lg="3" md="3" sm="4">
+                                                    <MudDivider Class="my-2" />
+                                                    <MudTextField @bind-Value="_userProducts[product].ExternalIds"
+                                                                  Margin="Margin.Dense"
+                                                                  Class="my-0"
+                                                                  HelperText="ExternalIds"
+                                                                  Variant="Variant.Outlined" />
+                                                </MudItem>
+                                            </MudGrid>
+                                        </MudStack>
+                                    </MudTabPanel>
+                                }
+                            </MudTabs>
+                            <MudStack Class="align-self-end" Row="true">
+                                <CustomButton ButtonType="ButtonType.Button"
+                                              Width="100"
+                                              Variant="Variant.Outlined"
+                                              Text="@Loc["cancel"]"
+                                              OnClick="OnCancel"
+                                              Disabled="_waiting"
+                                              Color="Color.Error" />
+                                <CustomButton ButtonType="ButtonType.Submit"
+                                              Width="100"
+                                              Variant="Variant.Outlined"
+                                              Color="Color.Primary"
+                                              Waiting="_waiting"
+                                              Text="@Loc["create"]" />
+                            </MudStack>
+                        </MudStack>
+                    </MudItem>
+                </MudGrid>
+            </MudStack>
+        </EditForm>
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+
+    public class ProductDetail
+    {
+        public List<ApplicationRoleDto> Roles { get; set; } = new();
+        public string ExternalIds { get; set; } = string.Empty;
+    }
+
+    private Dictionary<Products, ProductDetail> _userProducts = new();
+    private string? _imageUrl;
+    private IEnumerable<Products> _selectedProducts = new List<Products> { Products.ManagementPortal };
+    private IEnumerable<Products> _products = Enum.GetValues(typeof(Products))
+                                                .Cast<Products>()
+                                                .Where(p => p != Products.OthersProducts)
+                                                .ToList();
+
+    InputType PasswordInput = InputType.Password;
+    InputType ConfirmPasswordInput = InputType.Password;
+    string PasswordInputIcon = Icons.Material.Filled.VisibilityOff;
+    string ConfirmPasswordInputIcon = Icons.Material.Filled.VisibilityOff;
+    bool isShowPassword;
+    bool isShowConfirmPassword;
+    private bool _waiting = false;
+    private string pageKey = Guid.NewGuid().ToString();
+
+    private EditContext _editContext = null!;
+    private RegisterUserRequest model = new();
+
+    void ButtonPasswordClick()
+    {
+        @if (isShowPassword)
+        {
+            isShowPassword = false;
+            PasswordInputIcon = Icons.Material.Filled.VisibilityOff;
+            PasswordInput = InputType.Password;
+        }
+        else
+        {
+            isShowPassword = true;
+            PasswordInputIcon = Icons.Material.Filled.Visibility;
+            PasswordInput = InputType.Text;
+        }
+    }
+
+    void ButtonConfirmPasswordClick()
+    {
+        @if (isShowConfirmPassword)
+        {
+            isShowConfirmPassword = false;
+            ConfirmPasswordInputIcon = Icons.Material.Filled.VisibilityOff;
+            ConfirmPasswordInput = InputType.Password;
+        }
+        else
+        {
+            isShowConfirmPassword = true;
+            ConfirmPasswordInputIcon = Icons.Material.Filled.Visibility;
+            ConfirmPasswordInput = InputType.Text;
+        }
+    }
+
+    private void ValidateEditContext(string t)
+    {
+        var fieldIdentifier = new FieldIdentifier(_editContext.Model, "Password");
+        if (model.Password.Length != 0)
+            _editContext.NotifyFieldChanged(fieldIdentifier);
+
+        fieldIdentifier = new FieldIdentifier(_editContext.Model, "ConfirmPassword");
+        if (model.ConfirmPassword.Length != 0)
+            _editContext.NotifyFieldChanged(fieldIdentifier);
+    }
+
+    protected override void OnInitialized()
+    {
+        _editContext = new EditContext(model);
+
+        foreach (var product in _products)
+        {
+            if (!_userProducts.ContainsKey(product))
+            {
+                _userProducts[product] = new ProductDetail();
+            }
+        }
+    }
+
+    private async Task UploadImage(IBrowserFile file)
+    {
+        var buffer = new byte[file.Size];
+        await file.OpenReadStream().ReadAsync(buffer);
+        model.Image = buffer;
+        var base64 = Convert.ToBase64String(buffer);
+        _imageUrl = ManagementPortal.Shared.Pictures.Base64ToPicture.ConvertToWebPicture(base64);
+    }
+
+    private void OnRolesSend((List<ApplicationRoleDto> roles, Products product) data)
+    {
+        _userProducts[data.product].Roles = data.roles;
+    }
+
+    private void SelectProduct(IEnumerable<Products> selectedProducts)
+    {
+        _selectedProducts = selectedProducts;
+    }
+
+    private void PushProduct(Products product)
+    {
+        var productExists = _selectedProducts.FirstOrDefault(p => p == product);
+    }
+
+    private string GetMultiSelectionText(List<string> selectedValues)
+    {
+        if (selectedValues.Count < 1)
+        {
+            return "No se seleccionaron productos";
+        }
+        return $"{selectedValues.Count} productos seleccionados.";
+    }
+
+    public async Task PostNewUser()
+    {
+        _waiting = true;
+
+        model.MPRoles = _userProducts[Products.ManagementPortal].Roles.Select(r => r.Name).ToList();
+
+        List<ProductDto> userProducts = new();
+
+        foreach (var product in _selectedProducts.Where(p => p != Products.ManagementPortal))
+        {
+            userProducts.Add(new ProductDto
+                {
+                    Product = product,
+                    ExternalIds = _userProducts[product].ExternalIds,
+                    Roles = _userProducts[product].Roles.Select(r => r.Id).ToList(),
+                });
+        }
+
+        model.Products = userProducts;
+
+        var client = HttpClientFactory.CreateClient("CustomHttpClient");
+        var response = await client.PostAsJsonAsync("api/Users", model);
+
+        _waiting = false;
+
+        if (response.IsSuccessStatusCode)
+        {
+            model = new();
+            _imageUrl = null;
+            _userProducts = new();
+            foreach (var product in _products)
+            {
+                if (!_userProducts.ContainsKey(product))
+                {
+                    _userProducts[product] = new ProductDetail();
+                }
+            }
+            _selectedProducts = new List<Products> { Products.ManagementPortal };
+            pageKey = Guid.NewGuid().ToString();
+
+            string _createUserSuccess = Loc["msgCreateUserSuccess"];
+
+            DialogParameters parametersOk = new DialogParameters
+            {
+                { "Message", _createUserSuccess }
+            };
+
+            DialogOptions optionsOk = new() { NoHeader = true };
+
+            var dialog = await DialogService.ShowAsync<SuccessDialog>("", parametersOk, optionsOk);
+            var result = await dialog.Result;
+
+            if (result != null)
+            {
+                NavigationManager.NavigateTo("/users");
+            }
+            _editContext = new EditContext(model);
+
+            if (result != null) 
+            {
+                NavigationManager.NavigateTo("/Users");
+            }
+        }
+        else
+        {
+            var message = await response.Content.ReadAsStringAsync();
+            DialogParameters parametersError = new DialogParameters
+                {
+                    { "Message", message }
+                };
+
+            DialogOptions optionsError = new() { NoHeader = true };
+            await DialogService.ShowAsync<ErrorDialog>("", parametersError, optionsError);
+        }
+    }
+
+    private void OnCancel()
+    {
+        NavigationManager.NavigateTo("/Users");
+    }
+}

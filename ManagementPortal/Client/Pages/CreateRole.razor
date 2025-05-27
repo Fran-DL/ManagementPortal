@@ -1,0 +1,183 @@
+﻿@page "/create_role"
+@attribute [Authorize(Roles = "CreateRole")]
+
+@using Microsoft.AspNetCore.Authorization
+@using ManagementPortal.Shared.Dtos
+@using ManagementPortal.Shared.Constants
+@using ManagementPortal.Shared.Models
+@using System.Net.Http.Json
+@using Dialogs
+
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@inject IStringLocalizer<AppLocalization> Loc
+@inject NavigationManager Navigation
+
+<MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" Color="Color.Secondary" SliderColor="Color.Primary">
+    <MudTabPanel Text=@Loc["createRole"] Disabled="true" Style="color: var(--mud-palette-text-primary);">
+        <EditForm Model="@model" OnValidSubmit="PostRole" class="py-4 px-2">
+            <DataAnnotationsValidator />
+            <MudStack Class="mud-height-full">
+                <MudStack Class="mud-height-full" Justify="Justify.SpaceBetween">
+                    <MudGrid>
+                        <MudItem md="6" lg="6">
+                            <MudTextField @bind-Value="model.Name"
+                                          For="@(() => model.Name)"
+                                          HelperText=@Loc["enterRoleName"]
+                                          Variant="Variant.Outlined"
+                                          Clearable="true" 
+                                          />
+                        </MudItem>
+                        <MudItem md="6" lg="6">
+                            <MudSelect T="Products"
+                                       Variant="Variant.Outlined"
+                                       @bind-value="model.ApplicationManagment"
+                                       HelperText=@Loc["selectApplication"]>
+                                @foreach (var option in _products.OrderBy(p => p.ToString()))
+                                {
+                                    <MudSelectItem Value="option">@option</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem md="12" lg="12">
+                            <PermissionsSelector @key="model.ApplicationManagment" PermissionsSend="OnPermissionsSend" Product="model.ApplicationManagment" />
+                        </MudItem>
+                    </MudGrid>
+                    <MudStack Row="true" Class="align-self-end">
+                        <CustomButton ButtonType="ButtonType.Button"
+                        Width="100"
+                        Variant="Variant.Outlined"
+                        Text="@Loc["cancel"]"
+                        OnClick="OnCancel"
+                        Disabled="_waiting"
+                        Color="Color.Error" />
+                        <CustomButton ButtonType="ButtonType.Submit"
+                        Class="custom-button"
+                        Waiting="_waiting"
+                        Text="@Loc["save"]"
+                        Variant="Variant.Outlined"
+                        Width="100"
+                        Color="Color.Primary" />
+                    </MudStack>
+                </MudStack>
+            </MudStack>
+        </EditForm>
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    [Parameter]
+    public Products Product { get; set; }
+
+    private int _maxLength = 256; // Largo máximo para el nombre del rol
+    private ConfirmActionDialog _confirmActionDialog = new();
+    private bool _waiting { get; set; } = false;
+    private List<ApplicationPermissionDto> _permissions = new();
+    private ApplicationRoleDto model = new();
+    @inject IStringLocalizer<AppLocalization> Loc;
+    private IEnumerable<Products> _products = Enum.GetValues(typeof(Products))
+                                                .Cast<Products>()
+                                                .Where(p => p != Products.OthersProducts)
+                                                .ToList();
+
+
+    private void OnPermissionsSend(List<ApplicationPermissionDto> permissions)
+    {
+        _permissions = permissions;
+    }
+
+    public async Task PostRole()
+    {
+        if(_permissions.Count == 0)
+        {
+            DialogParameters parameters = new DialogParameters
+            {
+                { "Message", Loc["msgMustSelectAtLeastOnePermission"].Value },
+                { "Color", Color.Primary },
+                { "Icon", Icons.Material.Filled.Error },
+                { "ShowCancel", false},
+                { "CallBackOk", new EventCallback(this, () => _confirmActionDialog.Close())}
+            };
+
+            DialogOptions options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+            var dialogError = await DialogService.ShowAsync<ConfirmActionDialog>("", parameters, options);
+
+            if (dialogError.Dialog != null)
+            {
+                _confirmActionDialog = (ConfirmActionDialog)dialogError.Dialog;
+            }
+            return;
+        }
+
+        if (model.Name.Length > _maxLength)
+        { 
+            DialogParameters parameters = new DialogParameters
+            {
+                { "Message", Loc["msgRoleNameLenghtError"].Value },
+                { "Color", Color.Primary },
+                { "Icon", Icons.Material.Filled.Error },
+                { "ShowCancel", false},
+                { "CallBackOk", new EventCallback(this, () => _confirmActionDialog.Close())}
+            };
+
+            DialogOptions options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+            var dialogError = await DialogService.ShowAsync<ConfirmActionDialog>("", parameters, options);
+
+            if (dialogError.Dialog != null)
+            {
+                _confirmActionDialog = (ConfirmActionDialog)dialogError.Dialog;
+            }
+            return;
+        }
+
+
+        _waiting = true;
+
+        model.Permissions = _permissions;
+
+        var client = HttpClientFactory.CreateClient("CustomHttpClient");
+
+        HttpResponseMessage response = new();
+        response = await client.PostAsJsonAsync($"api/Roles/{model.ApplicationManagment}", model);
+
+        _waiting = false;
+
+        if (response.IsSuccessStatusCode)
+        {
+            _permissions.Clear();
+            model = new();
+
+            DialogParameters parametersOk = new DialogParameters
+            {
+                { "Message", Loc["roleCreatedSuccessfully"].Value }
+            };
+
+            DialogOptions optionsOk = new() { NoHeader = true };
+            var dialog = await DialogService.ShowAsync<SuccessDialog>("", parametersOk, optionsOk);
+
+            var result = await dialog.Result;
+
+            if (result != null) // Si el diálogo se cerró correctamente
+            {
+                Navigation.NavigateTo("/roles");
+            }
+        }
+        else
+        {
+            var message = await response.Content.ReadAsStringAsync();
+            DialogParameters parametersError = new DialogParameters
+                {
+                    { "Message", message }
+                };
+
+            DialogOptions optionsError = new() { NoHeader = true };
+            await DialogService.ShowAsync<ErrorDialog>("", parametersError, optionsError);
+        }
+    }
+
+    private void OnCancel()
+    {
+        NavigationManager.NavigateTo("/roles");
+    }
+}

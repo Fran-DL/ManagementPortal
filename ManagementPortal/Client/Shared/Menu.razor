@@ -1,0 +1,21 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IStringLocalizer<AppLocalization> Loc
+
+<MudNavMenu>
+    <MudNavLink Match="NavLinkMatch.All"
+                Href="/"
+                Icon="@Icons.Material.Filled.Home">@Loc["home"]</MudNavLink>
+    <AuthorizeView Roles="Messaging" Context="roleContext">
+        <MudNavLink Href="/messaging" Icon="@Icons.Material.Filled.Message">@Loc["Mensajeria"]</MudNavLink>
+    </AuthorizeView>
+    <AuthorizeView Roles="ListUsers, CreateUser" Context="roleContext">
+        <MudNavLink Href="/users" Icon="@Icons.Material.Filled.People">@Loc["users"]</MudNavLink>
+    </AuthorizeView>
+    <AuthorizeView Roles="ListRoles, CreateRole" Context="roleContext">
+        <MudNavLink Href="/roles" Icon="@Icons.Material.Filled.Security">@Loc["roles"]</MudNavLink>
+    </AuthorizeView>
+    <AuthorizeView Roles="ListLogs" Context="roleContext">
+        <MudNavLink Href="/audit" Icon="@Icons.Material.Filled.ListAlt">@Loc["Audit"]</MudNavLink>
+    </AuthorizeView>
+</MudNavMenu>

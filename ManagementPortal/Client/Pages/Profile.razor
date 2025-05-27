@@ -1,0 +1,461 @@
+﻿@page "/my_profile"
+@page "/edit_user/{Username}"
+@page "/view_user/{Username}"
+
+@using ManagementPortal.Shared.Dtos
+@using ManagementPortal.Shared.Dtos.ResponseMessages
+@using ManagementPortal.Shared.Constants
+@using Microsoft.AspNetCore.Authorization
+@using Dialogs
+@using Blazored.LocalStorage
+@using System.IdentityModel.Tokens.Jwt
+@using System.Net.Http.Headers
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.ComponentModel.DataAnnotations;
+
+@inject IDialogService DialogService
+@inject IHttpClientFactory HttpClientFactory
+@inject ILocalStorageService LocalStorage
+@inject IStringLocalizer<AppLocalization> Loc
+@inject Services.CustomAuthStateProvider CustomAuthStateProvider
+@inject NavigationManager NavigationManager
+
+<PageTitle>Profile</PageTitle>
+
+<MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" Color="Color.Secondary" SliderColor="@(!_loading ? Color.Primary : Color.Transparent)">
+    <MudTabPanel Text="@Loc["profile"]" Style="color: var(--mud-palette-text-primary);">
+        @if (_loading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+        else
+        {
+            @if (!_user.Id.Equals(string.Empty) && (IsOnProfilePage || _hasRoleView))
+            {
+                <MudStack Spacing="2" Class="py-4 px-2">
+                    <UserProfile @key="_keyProfile" User="_user" Disabled="_disabled" />
+                    <UserProducts @ref="_refUserProducts" SelectedProduct="@_product"
+                                  @key="_keyProducts" User="_user" Disabled="@(_disabled || !_hasRoleEdit)" />
+                    @if (!_user.IsDeleted && (IsOnProfilePage || _hasRoleEdit))
+                    {
+                        <MudStack Row="true" Class="align-self-end mt-2">
+                            <CustomButton ButtonType="ButtonType.Button"
+                                          Class="@(!_disabled ? "visible" : "invisible")"
+                                          Width="100"
+                                          Variant="Variant.Outlined"
+                                          Text="@Loc["cancel"]"
+                                          OnClick="OnCancel"
+                                          Disabled="_waiting"
+                                          Color="Color.Error" />
+                            <CustomButton ButtonType="ButtonType.Button"
+                                          Class="@(!_disabled ? "visible" : "invisible")"
+                                          Variant="Variant.Outlined"
+                                          Width="100"
+                                          Color="Color.Primary"
+                                          Waiting="_waiting"
+                                          Text="@Loc["save"]"
+                                          OnClick="OnSave" />
+                            <CustomButton ButtonType="ButtonType.Button"
+                                          Class="@(_disabled ? "d-block" : "d-none")"
+                                          Variant="Variant.Outlined"
+                                          Width="100"
+                                          Color="Color.Primary"
+                                          Waiting="_waiting"
+                                          Text="@Loc["edit"]"
+                                          OnClick="@(() => _disabled = false)" />
+                        </MudStack>
+                    }
+                </MudStack>
+            }
+        }
+    </MudTabPanel>
+    @if (!_loading && !_user.Id.Equals(string.Empty) && !_user.IsDeleted && (_hasRoleUpdate2fa || _showChangePassword))
+    {
+    
+        <MudTabPanel Text=@Loc["security"] Style="color: var(--mud-palette-text-primary);">
+            <MudStack Class="py-4 px-2">
+                
+                    <TwoFactorAuth User="@_user"/>
+         
+                @if (_showChangePassword)
+                {
+                    <MudDivider Class="my-2" />
+                    <ChangePassword Username="@_user.UserName" />
+                }
+            </MudStack>
+        </MudTabPanel>
+    
+    }
+</MudTabs>
+
+@code {
+    [Parameter]
+    public string Username { get; set; } = string.Empty;
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string Product { get; set; } = Products.ManagementPortal.ToString();
+
+    private HttpClient _httpClient = new();
+    private ConfirmActionDialog _customDialog = new();
+    private UserProducts? _refUserProducts;
+
+    private bool IsOnProfilePage => NavigationManager.ToBaseRelativePath(NavigationManager.Uri).Equals("my_profile");
+    private bool IsOnEditUserPage => NavigationManager.ToBaseRelativePath(NavigationManager.Uri).StartsWith("edit_user/");
+    private bool IsOnViewUserPage => NavigationManager.ToBaseRelativePath(NavigationManager.Uri).StartsWith("view_user/");
+
+    private ApplicationUserDto _originalUser = new();
+    private ApplicationUserDto _user = new();
+    private bool _loading { get; set; } = true;
+    private bool _waiting { get; set; } = false;
+    private bool _disabled { get; set; } = true;
+    private bool _fromList { get; set; } = true;
+    private bool _hasRoleEdit { get; set; } = false;
+    private bool _hasRoleView { get; set; } = false;
+    private bool _hasRoleUpdate2fa { get; set; } = false;
+    private bool _showChangePassword { get; set; } = false;
+    private string _product { get; set; } = Products.ManagementPortal.ToString();
+    private string _keyProducts { get; set; } = Guid.NewGuid().ToString();
+    private string _keyProfile { get; set; } = Guid.NewGuid().ToString();
+
+    protected override void OnInitialized()
+    {
+        _httpClient = HttpClientFactory.CreateClient("CustomHttpClient");
+        _product = Product;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var authenticationState = await CustomAuthStateProvider.GetAuthenticationStateAsync();
+
+        var user = authenticationState.User;
+        _hasRoleEdit = user.IsInRole("EditUser");
+        _hasRoleView = user.IsInRole("ListUsers");
+        _hasRoleUpdate2fa = user.IsInRole("Update2fa");
+        var username = user.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.UniqueName)?.Value ?? string.Empty;
+
+        if (IsOnEditUserPage || IsOnViewUserPage)
+        {
+            if (username == Username)
+            { 
+                _showChangePassword = true;
+            }
+
+            await LoadUserDataAsync(Username);
+        }
+        else
+        {
+            _showChangePassword = true;
+            await LoadUserDataAsync(username);
+        }
+
+        _disabled = !IsOnEditUserPage;
+
+        StateHasChanged();
+    }
+
+    public static bool IsUserProfileValid(UserProfileEditDto userProfile)
+    {
+        var context = new ValidationContext(userProfile);
+        var validationResults = new List<ValidationResult>();
+
+        return Validator.TryValidateObject(userProfile, context, validationResults, validateAllProperties: true);
+    }
+
+    private async Task LoadUserDataAsync(string username)
+    {
+        _loading = true;
+
+        var response = await _httpClient.GetAsync($"api/Users/username/{username}/");
+
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<ApplicationUserDto>() ?? new ApplicationUserDto();
+
+            _user = new ApplicationUserDto(result);
+            _originalUser = new ApplicationUserDto(_user);
+
+            _loading = false;
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/not_found");
+        }
+
+        _keyProducts = Guid.NewGuid().ToString();
+        _keyProfile = Guid.NewGuid().ToString();
+
+        StateHasChanged();
+    }
+
+    private void OnCancel()
+    {
+        if (IsOnEditUserPage || IsOnViewUserPage)
+        {
+            NavigationManager.NavigateTo("/Users");
+        }
+        else
+        {
+            _user = new ApplicationUserDto(_originalUser);
+            _disabled = !_disabled;
+            _keyProducts = Guid.NewGuid().ToString();
+            _keyProfile = Guid.NewGuid().ToString();
+        }
+    }
+
+    private async Task OnSave()
+    {
+        var inputs = new UserProfileEditDto();
+        inputs.Name = _user.Name;
+        inputs.LastName = _user.LastName;
+        inputs.UserName = _user.UserName;
+        inputs.Email = _user.Email;
+        inputs.Image = _user.Image;
+
+        bool inputsOk = IsUserProfileValid(inputs);
+
+        if (!inputsOk)
+        {
+            DialogParameters parameters = new DialogParameters
+            {
+                { "Message", Loc["checkFields"].Value },
+                { "Icon", Icons.Material.Filled.Error },
+                { "ShowCancel", false},
+                { "CallBackOk", new EventCallback(this, () => _customDialog.Close())}
+            };
+
+            DialogOptions options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+            var dialog = await DialogService.ShowAsync<ConfirmActionDialog>("", parameters, options);
+
+            if (dialog.Dialog != null)
+            {
+                _customDialog = (ConfirmActionDialog)dialog.Dialog;
+            }
+
+            return;
+        }
+
+        if (_hasRoleEdit)
+        {
+            await PutCompleteUser();
+        }
+        else
+        {
+            await PutProfileUser();
+        }
+    }
+
+    private async Task PutProfileUser()
+    {
+        _waiting = true;
+        _disabled = true;
+        UserProfileEditDto newUser = new();
+
+        newUser.Name = _user.Name;
+        newUser.LastName = _user.LastName;
+        newUser.UserName = _user.UserName;
+        newUser.Email = _user.Email;
+        newUser.Image = _user.Image;
+
+        var response = await _httpClient.PutAsJsonAsync($"api/Users/profile", newUser);
+
+        _waiting = false;
+
+        if (response.IsSuccessStatusCode)
+        {
+            _originalUser = new ApplicationUserDto(_user);
+            DialogParameters parameters = new DialogParameters
+            {
+                { "Message", Loc["updateUserSuccess"].Value },
+                { "Icon", Icons.Material.Filled.CheckCircleOutline },
+                { "ShowCancel", false},
+                { "CallBackOk", new EventCallback(this, () => OnCloseDialog())}
+            };
+
+            DialogOptions options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+            var dialog = await DialogService.ShowAsync<ConfirmActionDialog>("", parameters, options);
+
+            if (dialog.Dialog != null)
+            {
+                _customDialog = (ConfirmActionDialog)dialog.Dialog;
+            }
+        }
+        else
+        {
+            _disabled = false;
+            var errorMesage = await response.Content.ReadAsStringAsync();
+
+            DialogParameters parameters = new DialogParameters
+            {
+                { "Message", errorMesage },
+                { "Icon", Icons.Material.Filled.Error },
+                { "ShowCancel", false},
+                { "CallBackOk", new EventCallback(this, () => _customDialog.Close())}
+            };
+
+            DialogOptions options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+            var dialog = await DialogService.ShowAsync<ConfirmActionDialog>("", parameters, options);
+
+            if (dialog.Dialog != null)
+            {
+                _customDialog = (ConfirmActionDialog)dialog.Dialog;
+            }
+        }
+    }
+
+    private async Task PutCompleteUser()
+    {
+        _waiting = true;
+        _disabled = true;
+        UserCompleteEditDto newUser = new();
+
+        newUser.Name = _user.Name;
+        newUser.LastName = _user.LastName;
+        newUser.UserName = _user.UserName;
+        newUser.Email = _user.Email;
+        newUser.Image = _user.Image;
+
+        List<UserProductEditDto> newUserProducts = new();
+        List<string> newUserRolesMp = new();
+
+        var productSelected = _refUserProducts?.GetProductsDetail();
+
+        if (productSelected != null)
+        {
+            foreach (var product in productSelected.Where(p => p.Key != Products.ManagementPortal))
+            {
+                newUserProducts.Add(new UserProductEditDto
+                    {
+                        Product = product.Key,
+                        ExternalIds = product.Value.Detail.ExternalIds,
+                        RolesId = product.Value.Roles.Select(r => r.Id).ToList(),
+                    });
+            }
+
+            var rolesMp = productSelected[Products.ManagementPortal];
+
+            newUserRolesMp = rolesMp.Roles.Select(r => r.Name).ToList();
+        }
+
+        newUser.Products = newUserProducts;
+        newUser.RolesMP = newUserRolesMp;
+
+        var response = await _httpClient.PutAsJsonAsync($"api/Users", newUser);
+
+        _waiting = false;
+
+        if (response.IsSuccessStatusCode)
+        {
+            var assignProductsResult =
+                await response.Content.ReadFromJsonAsync<EditUserMessage>();
+
+            if (!assignProductsResult?.UserProfileResult ?? false)
+            {
+                _disabled = false;
+
+                DialogParameters parameters = new DialogParameters
+                {
+                    { "Message", assignProductsResult?.UserProfileMessage },
+                    { "Icon", Icons.Material.Filled.Error },
+                    { "ShowCancel", false},
+                    { "CallBackOk", new EventCallback(this, () => OnCloseDialog())}
+                };
+
+                DialogOptions options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+                var dialog = await DialogService.ShowAsync<ConfirmActionDialog>("", parameters, options);
+
+                if (dialog.Dialog != null)
+                {
+                    _customDialog = (ConfirmActionDialog)dialog.Dialog;
+                }
+
+                return;
+            }
+
+            if (assignProductsResult?.ProductAssignMessages.Count() > 0)
+            {
+                _originalUser = new ApplicationUserDto(_user);
+
+                var productsOk =
+                    assignProductsResult.ProductAssignMessages
+                    .Where(ap => ap.Result)
+                    .Select(ap => (Product: ap.Product, Message: ap.Message))
+                    .ToList() ?? new List<(string Product, string Message)>();
+
+                var productsError =
+                assignProductsResult.ProductAssignMessages
+                    .Where(ap => !ap.Result)
+                    .Select(ap => (Product: ap.Product, Message: ap.Message))
+                    .ToList() ?? new List<(string Product, string Message)>();
+
+                DialogParameters parameters = new DialogParameters
+                {
+                    { "SuccessProducts", productsOk },
+                    { "FailedProducts", productsError },
+                    { "CallBackOk", new EventCallback(this, () => OnCloseDialogProducts())}
+                };
+
+                DialogOptions _options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+                var dialog = await DialogService.ShowAsync<UpdateUserProductsDialog>("", parameters, _options);
+            }
+            else
+            {
+                DialogParameters parameters = new DialogParameters
+                {
+                    { "Message", assignProductsResult?.UserProfileMessage },
+                    { "Icon", Icons.Material.Filled.CheckCircleOutline },
+                    { "ShowCancel", false},
+                    { "CallBackOk", new EventCallback(this,async () =>
+                        {
+                            await OnCloseDialog();
+                            if (IsOnEditUserPage || IsOnViewUserPage)
+                            {
+                                NavigationManager.NavigateTo("/Users");
+                            }
+                        })
+                    }
+                };
+
+                DialogOptions options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+                var dialog = await DialogService.ShowAsync<ConfirmActionDialog>("", parameters, options);
+
+                if (dialog.Dialog != null)
+                {
+                    _customDialog = (ConfirmActionDialog)dialog.Dialog;
+                }
+            }
+        }
+        else
+        {
+            _disabled = false;
+            var errorMesage = await response.Content.ReadAsStringAsync();
+
+            DialogParameters parameters = new DialogParameters
+            {
+                { "Message", errorMesage },
+                { "Icon", Icons.Material.Filled.Error },
+                { "ShowCancel", false},
+                { "CallBackOk", new EventCallback(this, () => OnCloseDialog())}
+            };
+
+            DialogOptions options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+            var dialog = await DialogService.ShowAsync<ConfirmActionDialog>("", parameters, options);
+
+            if (dialog.Dialog != null)
+            {
+                _customDialog = (ConfirmActionDialog)dialog.Dialog;
+            }
+        }
+    }
+
+    private async Task OnCloseDialog()
+    {
+        await LoadUserDataAsync(_user.UserName);
+        _customDialog.Close();
+    }
+
+    private async Task OnCloseDialogProducts()
+    {
+        await LoadUserDataAsync(_user.UserName);
+    }
+}

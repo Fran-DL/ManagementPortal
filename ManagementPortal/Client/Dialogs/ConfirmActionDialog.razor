@@ -1,0 +1,108 @@
+﻿@inject IStringLocalizer<AppLocalization> Loc
+
+<MudDialog Class="custom-dialog">
+    <DialogContent>
+        <MudStack Class="mud-height-full mud-width-full" Justify="Justify.Center" AlignItems="AlignItems.Center">
+            @if (Waiting ?? false)
+            {
+                <MudProgressCircular Color="@(Color ?? MudBlazor.Color.Primary)"
+                                     Style="height:60px;width:60px;"
+                                     Class="my-2"
+                                     Indeterminate="true" />
+            }
+            else
+            {
+                @if (Icon == Icons.Material.Filled.Warning)
+                {
+                    <MudIcon Icon="@Icon" Color="MudBlazor.Color.Warning" Size="Size.Small" Style="font-size: 4rem;" Class="my-2" />
+                }
+                else if (Icon == Icons.Material.Filled.CheckCircleOutline)
+                {
+                    <MudIcon Icon="@Icon" Color="MudBlazor.Color.Success" Size="Size.Small" Style="font-size: 4rem;" Class="my-2" />
+                }
+                else if (Icon == Icons.Material.Filled.Error)
+                {
+                    <MudIcon Icon="@Icon" Color="MudBlazor.Color.Error" Size="Size.Small" Style="font-size: 4rem;" Class="my-2" />
+                }
+                else
+                {
+                    <MudIcon Icon="@Icon" Color="@(Color ?? MudBlazor.Color.Primary)" Style="font-size: 4rem;" Class="my-2" />
+                }
+            }
+            <MudText Color="@(Color ?? MudBlazor.Color.Primary)">
+                @Message
+            </MudText>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        @if (!Waiting ?? false)
+        {
+            @if (ShowCancel ?? false)
+            {
+                <MudButton Color="@(Color ?? MudBlazor.Color.Primary)" OnClick="Cancel">@Loc["cancel"]</MudButton>
+
+                @if (RedOk ?? false)
+                {
+                    <MudButton Color="MudBlazor.Color.Error" OnClick="Submit">@Loc["confirm"]</MudButton>
+                }
+                else
+                {
+                    <MudButton Color="@(Color ?? MudBlazor.Color.Primary)" OnClick="Submit">@Loc["confirm"]</MudButton>
+                }
+            }
+            else
+            {
+                <MudButton Color="@(Color ?? MudBlazor.Color.Primary)" OnClick="Submit">@Loc["close"]</MudButton>
+            }
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public string? Message { get; set; } = string.Empty;
+
+    [Parameter]
+    public Color? Color { get; set; }
+
+    [Parameter]
+    public string? Icon { get; set; }
+
+    [Parameter]
+    public bool? Waiting { get; set; } = false;
+
+    [Parameter]
+    public bool? ShowCancel { get; set; } = true;
+
+    [Parameter]
+    public bool? RedOk { get; set; } = false;
+
+    [Parameter]
+    public EventCallback CallBackOk { get; set; }
+
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; } = new MudDialogInstance();
+
+    private async Task Submit()
+    {
+        await CallBackOk.InvokeAsync();
+    }
+
+    public void UpdateParameters(DialogParameters newParameters)
+    {
+        Message = newParameters.TryGet<string?>("Message");
+        Color = newParameters.TryGet<Color?>("Color");
+        Icon = newParameters.TryGet<string?>("Icon");
+        Waiting = newParameters.TryGet<bool?>("Waiting");
+        ShowCancel = newParameters.TryGet<bool>("ShowCancel");
+        CallBackOk = newParameters.TryGet<EventCallback>("CallBackOk");
+        RedOk = newParameters.TryGet<bool>("RedOk");
+
+        StateHasChanged();
+    }
+
+    public void Close() => MudDialog.Close(DialogResult.Ok(true));
+
+    private void Cancel() => MudDialog.Cancel();
+
+}

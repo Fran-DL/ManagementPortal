@@ -1,0 +1,252 @@
+﻿@page "/"
+@attribute [Authorize]
+
+@using Dialogs
+@using Microsoft.AspNetCore.Authorization
+@using ManagementPortal.Shared.Constants
+@using ManagementPortal.Shared.Dtos
+@using Blazored.LocalStorage
+@using System.IdentityModel.Tokens.Jwt
+@using System.Text.Json
+
+@inject IStringLocalizer<AppLocalization> Loc
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@inject ILocalStorageService LocalStorage
+
+<PageTitle>Productos</PageTitle>
+@if (_loading)
+{
+    <MudGrid>
+        <MudItem xs="4">
+            <MudPaper Class="pa-4 ma-2" Square="true">
+                <MudStack>
+                    <MudStack Row="true">
+                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="50px" Height="50px" />
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100px" Height="25px" />
+                    </MudStack>
+                    <MudDivider Class="my-4" />
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="75%" Height="20px" />
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="40px" Height="40px" Class="align-self-end" />
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="4">
+            <MudPaper Class="pa-4 ma-2" Square="true">
+                <MudStack>
+                    <MudStack Row="true">
+                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="50px" Height="50px" />
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100px" Height="25px" />
+                    </MudStack>
+                    <MudDivider Class="my-4" />
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="75%" Height="20px" />
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="40px" Height="40px" Class="align-self-end" />
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="4">
+            <MudPaper Class="pa-4 ma-2" Square="true">
+                <MudStack>
+                    <MudStack Row="true">
+                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="50px" Height="50px" />
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100px" Height="25px" />
+                    </MudStack>
+                    <MudDivider Class="my-4" />
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="75%" Height="20px" />
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="40px" Height="40px" Class="align-self-end" />
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+}
+else{
+<MudStack>
+    <MudGrid>
+        <MudItem xs="4">
+            <MudPaper Class="pa-4 ma-2" Square="true">
+                <div style="opacity:@(!_assetManagerEnabled ? "1" : "30%;user-select: none;")">
+                <MudStack>
+                    <MudStack Row="true">
+                        <MudImage Src="AM vectorial.svg" Height="50" />
+                        <MudText Typo="Typo.h6">Asset Manager</MudText>
+                    </MudStack>
+                    <MudDivider Class="my-4" />
+                    <MudTextM3>@Loc["descriptionDummie"]</MudTextM3>
+                    <MudIconButton Variant="Variant.Filled"
+                                   OnClick="@(async () => await NavigateToProduct(Products.AssetManager))"
+                                   Icon="@Icons.Material.Filled.Logout"
+                                   Class="align-self-end"
+                                   Size="Size.Medium"
+                                   Color="Color.Primary" 
+                                   Disabled=@_assetManagerEnabled />
+                </MudStack>
+                </div>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs=" 4">
+                        <MudPaper Class="pa-4 ma-2" Square="true">
+                             <div style="opacity:@(!_eventManagerEnabled ? "1" : "30%;user-select: none;")">
+                                <MudStack>
+                                    <MudStack Row="true">
+                                        <MudImage Src="EM vectorial.svg" Height="50" />
+                                        <MudText Typo="Typo.h6">Event Manager</MudText>
+                                    </MudStack>
+                                    <MudDivider Class="my-4" />
+                                    <MudTextM3>@Loc["descriptionDummie"]</MudTextM3>
+                                    <MudIconButton Variant="Variant.Filled"
+                                       OnClick="@(async () => await NavigateToProduct(Products.EventManager))"
+                                                   Icon="@Icons.Material.Filled.Logout"
+                                                   Class="align-self-end"
+                                                   Size="Size.Medium"
+                                                   Color="Color.Primary" 
+                                                   Disabled=@_eventManagerEnabled />
+                                </MudStack>
+                            </div>
+                        </MudPaper>
+        </MudItem>
+        <MudItem xs="4">
+            <MudPaper Class="pa-4 ma-2 align-center" Square="true">
+                 <div style="opacity:@(!_ioTMonitorEnabled ? "1" : "30%;user-select: none;")">
+                    <MudStack>
+                        <MudStack Row="true">
+                            <MudImage Src="IM vectorial.svg" Height="50" />
+                            <MudText Typo="Typo.h6">IoT Manager</MudText>
+                        </MudStack>
+                        <MudDivider Class="my-4" />
+                        <MudTextM3>@Loc["descriptionDummie"]</MudTextM3>
+                        <MudIconButton Variant="Variant.Filled"
+                                       OnClick="@(async () => await NavigateToProduct(Products.IoTMonitor))"
+                                       Icon="@Icons.Material.Filled.Logout"
+                                       Class="align-self-end"
+                                       Size="Size.Medium"
+                                       Color="Color.Primary"
+                                       Disabled=@_ioTMonitorEnabled />
+                    </MudStack>
+                    </div>
+            </MudPaper>
+        </MudItem>
+
+
+    </MudGrid>
+</MudStack>
+}
+@code {
+
+
+    private HttpClient _httpClient = new();
+    private IEnumerable<Products> _products = Enum.GetValues(typeof(Products))
+                                .Cast<Products>()
+                                .Where(p => p != Products.OthersProducts)
+                                .ToList();
+
+    private ConfirmActionDialog _confirmActionDialog = new();
+
+    private bool _assetManagerEnabled = true;
+    private bool _eventManagerEnabled = true;
+    private bool _ioTMonitorEnabled = true;
+
+    private ApplicationUserDto _user = new();
+
+    private bool _loading { get; set; } = true;
+
+    protected override async void OnInitialized()
+    {
+        var token = await LocalStorage.GetItemAsync<string>("token") ?? string.Empty;
+        var handler = new JwtSecurityTokenHandler();
+        var jwtToken = handler.ReadJwtToken(token);
+        var username = jwtToken.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.UniqueName)?.Value ?? string.Empty;
+        _httpClient = HttpClientFactory.CreateClient("CustomHttpClient");
+
+        var response = await _httpClient.GetAsync($"api/Users/username/{username}/");
+
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<ApplicationUserDto>() ?? new ApplicationUserDto();
+            _user = new ApplicationUserDto(result);
+            foreach (var product in _user.Products)
+            {
+                if (product.Active)
+                {
+                    switch (product.Product)
+                    {
+                        case (Products.AssetManager):
+
+                            _assetManagerEnabled = false;
+                            break;
+                        case (Products.EventManager):
+                            _eventManagerEnabled = false;
+                            break;
+                        case (Products.IoTMonitor):
+                            _ioTMonitorEnabled = false;
+                            break;
+                        default:
+                            _assetManagerEnabled = true;
+                            _eventManagerEnabled = true;
+                            _ioTMonitorEnabled = true;
+                            break;
+
+
+                    }
+                }
+            }
+            _loading =false;
+            StateHasChanged();
+
+        }
+
+    }
+
+    public class OtpResponse
+    {
+        public string Otp { get; set; } = string.Empty;
+        public string userProdudctId { get; set; } = string.Empty;
+    }
+
+    private async Task NavigateToProduct(Products product)
+    {
+        var otpResponse = await _httpClient.GetAsync($"api/Users/access-product/{product.ToString()}");
+
+        if (otpResponse.IsSuccessStatusCode)
+        {
+            var otp = await otpResponse.Content.ReadFromJsonAsync<OtpResponse>();
+
+            if (otp! != null)
+            {
+                OtpRequestDto otpRequest = new OtpRequestDto
+                {
+                    Otp = otp.Otp,
+                    UserId = otp.userProdudctId
+                };
+
+                var loginResponse = await _httpClient.PostAsJsonAsync($"{product}/api/login", otpRequest);
+
+                if (loginResponse.IsSuccessStatusCode)
+                {
+                    NavigationManager.NavigateTo($"/{product.ToString()}");
+                    return;
+                }
+            }
+        }
+
+        string accessProductError = Loc["msgAccessProductError"];
+
+        DialogParameters parametersError = new DialogParameters
+                    {
+                        { "Message", $"{accessProductError} {product.ToString()}" },
+                        { "Color", Color.Primary },
+                        { "Icon", Icons.Material.Filled.Error },
+                        { "ShowCancel", false},
+                        { "CallBackOk", new EventCallback(this, () => _confirmActionDialog.Close())}
+                    };
+
+        DialogOptions optionsError = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+        var dialogError = await DialogService.ShowAsync<ConfirmActionDialog>("", parametersError, optionsError);
+
+        if (dialogError.Dialog != null)
+        {
+            _confirmActionDialog = (ConfirmActionDialog)dialogError.Dialog;
+        }
+    }
+}

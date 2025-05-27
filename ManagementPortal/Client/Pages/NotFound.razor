@@ -1,0 +1,27 @@
+﻿@page "/not_found"
+
+@using MudBlazor
+
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<AppLocalization> Loc
+
+<PageTitle>Not Found</PageTitle>
+
+<MudGrid Justify="Justify.Center" Class="flex-grow-1" Spacing="0">
+    <MudItem lg="4" md="6" sm="8">
+        <MudStack Justify="Justify.Center" Class="mud-height-full" Spacing="0">
+            <MudPaper Class="pa-4 rounded-xl" Elevation="2">
+                <MudStack AlignItems="AlignItems.Center" Spacing="4">
+                    <MudImage Src="./error_404.jpg" Width="350" />
+                    <MudText Align="Align.Center" Typo="Typo.h5">@Loc["ResourceNotFound"]</MudText>
+                    <CustomButton Text="@Loc["returnToHome"]"
+                                  Width="200"
+                                  Color="Color.Primary"
+                                  Class="rounded-xl"
+                                  Variant="Variant.Filled"                                
+                                  OnClick="@(() => NavigationManager.NavigateTo("/"))" />
+                </MudStack>
+            </MudPaper>
+        </MudStack>
+    </MudItem>
+</MudGrid>

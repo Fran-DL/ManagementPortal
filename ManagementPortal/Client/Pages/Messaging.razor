@@ -1,0 +1,722 @@
+﻿@page "/messaging"
+@attribute [Authorize(Roles = "Messaging")]
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authorization
+@using Blazored.LocalStorage
+@using Microsoft.AspNetCore.SignalR.Client
+@using ManagementPortal.Shared.Models
+@using ManagementPortal.Shared.Dtos
+@using ManagementPortal.Shared.Constants
+@using MudBlazor
+@using System.IdentityModel.Tokens.Jwt
+@using Microsoft.AspNetCore.WebUtilities
+@using Dialogs
+
+@inject ILocalStorageService LocalStorage
+@inject IJSRuntime JSRuntime
+@inject MessagingService SignalRService
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@inject IStringLocalizer<AppLocalization> Loc
+
+<MudGrid>
+    <MudItem xs="4">
+        <MudStack Row AlignItems="AlignItems.Center">
+            <SearchUsers @key="_keySearch"
+                         Disabled="@(_loadingContacts || _loadingChat)"
+                         UserSend="OnUserSend"
+                         ChannelSend="LoadChannel"
+                         Channels="_channels.Where(ch => !ch.IsPrivate).ToList()" />
+            <AuthorizeView Roles="GroupMessaging">
+                    <MudIconButton Disabled="@(_loadingContacts || _loadingChat)"
+                                   Icon="@Icons.Material.Filled.GroupAdd" OnClick="OnAddGroup" Size="Size.Medium" />
+            </AuthorizeView>
+        </MudStack>
+        <MudPaper>
+            <MudList @key="_keyList" @bind-SelectedValue="_activeChannel"
+                     T="MessagingChannelDto" Class="overflow-y-scroll mt-2 pa-2" Style="@($"height: 75vh;")">
+                @if (_loadingContacts)
+                {
+                    foreach (var i in Enumerable.Range(1, 3))
+                    {
+                        <MudDivider />
+                        <MudStack Row="true" Class="my-2 px-4">
+                            <MudSkeleton SkeletonType="SkeletonType.Circle" Width="40px" Height="40px" />
+                            <MudStack Class="mud-width-full">
+                                <MudSkeleton Animation="Animation.Pulse" Height="15px" Class="py-2" />
+                                <MudSkeleton Animation="Animation.Pulse" Height="15px" Class="py-2" />
+                            </MudStack>
+                        </MudStack>
+                        <MudDivider />
+                    }
+                }
+                else if (!_channels.Any() || _channels.All(ch => ch.Messages.Count() == 0))
+                {
+                    <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center">
+                        <MudText Color="Color.Primary">
+                            @Loc["noChannels"]
+                        </MudText>
+                    </MudStack>
+                }
+                else
+                {
+                    @foreach (var channel in _channels
+                  .Where(ch => ch.Messages.Count() == 0)
+                  .Concat(_channels.Where(ch => ch.Messages.Count() > 0)
+                  .OrderByDescending(ch => ch.Messages.LastOrDefault()?.Timestamp))
+                  )
+                    {
+                        <MudDivider />
+                        <MudListItem Disabled="@(_loadingContacts || _loadingChat)" Value="channel"
+                        @onclick="() => LoadChannel(channel)">
+                            <MudBadge Content="@channel.Messages.Count(m => !m.State.Equals(MessageState.Read)
+                                && !m.User.UserName.Equals(_user.UserName))"
+                            Color="Color.Error"
+                            Visible="@(@channel.Messages.Count(m => !m.State.Equals(MessageState.Read)
+                                            && !m.User.UserName.Equals(_user.UserName)) > 0)"
+                            Overlap="true">
+                                <MudStack Row="true" Class="pr-2 pr-4">
+                                    <MudAvatar Style="@($"color: white; background-color: {GetUserColor(channel.Name)}")">
+                                        @if (channel.IsPrivate)
+                                        {
+                                            var user = channel.Users.FirstOrDefault(u => !u.UserName.Equals(_user.UserName));
+
+                                            if (user != null && user.IsDeleted)
+                                            {
+                                                <MudIcon Color="Color.Secondary" Icon="@Icons.Material.Filled.PersonOff" Size="Size.Large" />
+                                            }
+                                            else
+                                            {
+                                                @channel.Name.Substring(0, 1).ToUpper()
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <MudIcon Color="Color.Secondary" Icon="@Icons.Material.Filled.Groups" Size="Size.Large" />
+                                        }
+                                    </MudAvatar>
+                                    <MudStack>
+                                        <MudText Typo="Typo.subtitle2">
+                                            @channel.Name
+                                        </MudText>
+                                        <MudStack Row="true" Spacing="1">
+                                            @if (channel.Messages.Count() > 0)
+                                            {
+                                                var message = channel.Messages.OrderByDescending(m => m.Timestamp).FirstOrDefault();
+                                                <MudText Typo="Typo.caption">
+                                                    <b>@($"{message?.User.UserName}:")</b>
+                                                </MudText>
+                                                <MudText Typo="Typo.caption">
+                                                    @($"{message?.Text}")
+                                                </MudText>
+                                            }
+                                        </MudStack>
+                                    </MudStack>
+                                </MudStack>
+                            </MudBadge>
+                        </MudListItem>
+                        <MudDivider />
+                    }
+                }
+            </MudList>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="8">
+        <MudPaper Class="mud-border-primary d d-flex flex-column"
+        Style="height: 75vh;"
+        Elevation="0">
+            @if (_loadingChat)
+            {
+                <MudProgressLinear Color="Color.Info" Indeterminate="true" />
+            }
+            else
+            {
+                @if (!_activeChannel.Id.Equals(string.Empty))
+                {
+                    <MudPaper Style="position: sticky; top: 0; z-index: 10" Class="pa-2">
+                        <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                            <MudStack Row AlignItems="AlignItems.Center" Style="cursor: pointer;"
+                            @onclick="@(() => _showUsers = !_showUsers)">
+                                <MudAvatar Style="@($"color: white; background-color: {GetUserColor(_activeChannel.Name)}")">
+                                    @if (_activeChannel.IsPrivate)
+                                    {
+                                        var user = _activeChannel.Users.FirstOrDefault(u => !u.UserName.Equals(_user.UserName));
+
+                                        if (user != null && user.IsDeleted)
+                                        {
+                                            <MudIcon Color="Color.Secondary" Icon="@Icons.Material.Filled.PersonOff" Size="Size.Large" />
+                                        }
+                                        else
+                                        {
+                                            @_activeChannel.Name.Substring(0, 1).ToUpper()
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <MudIcon Color="Color.Secondary" Icon="@Icons.Material.Filled.Groups" Size="Size.Large" />
+                                    }
+                                </MudAvatar>
+                                <MudText Typo="Typo.subtitle2">
+                                    @_activeChannel.Name
+                                </MudText>
+                            </MudStack>
+                            <MudStack Style="width: 40%;" Row>
+                                @if (!_activeChannel.IsPrivate)
+                                {
+                                    <AuthorizeView Roles="GroupMessaging">
+                                        <MudIconButton Disabled="@(_loadingContacts || _loadingChat)"
+                                                       Icon="@Icons.Material.Filled.PersonAddAlt1"
+                                                       OnClick="OnAddUserGroup" Size="Size.Medium" />
+                                    </AuthorizeView>
+                                }
+                                <MudTextField T="string"
+                                ValueChanged="SearchMessage"
+                                Immediate="true"
+                                Variant="Variant.Outlined"
+                                Adornment="Adornment.End"
+                                Margin="Margin.Dense"
+                                AdornmentIcon="@Icons.Material.Filled.Search"
+                                AdornmentColor="Color.Secondary" />
+                            </MudStack>
+                        </MudStack>
+                        @if (!_activeChannel.IsPrivate)
+                        {
+                            <MudCollapse Expanded="_showUsers">
+                                <MudDivider Class="my-2" />
+                                <MudGrid Spacing="2">
+                                    @foreach (var user in _activeChannel.Users.Where(u => !u.UserName.Equals(_user.UserName)))
+                                    {
+                                        <MudItem lg="3" md="3" sm="3">
+                                            <MudStack AlignItems="AlignItems.Center" Style="cursor: pointer;" Row
+                                            @onclick="@(() => OnUserSend(user))">
+                                                <MudAvatar Size="Size.Medium"
+                                                Style="@($"color: white; background-color: {GetUserColor(user.UserName)}")">
+                                                    @user.UserName.Substring(0, 1).ToUpper()
+                                                </MudAvatar>
+                                                <MudText Typo="Typo.caption">@user.UserName</MudText>
+                                            </MudStack>
+                                        </MudItem>
+                                    }
+                                </MudGrid>
+                            </MudCollapse>
+                        }
+                    </MudPaper>
+                }
+                <MudPaper id="chat"
+                Class="mud-border-primary overflow-y-scroll d d-flex flex-column px-4"
+                Style="height: 75vh; background-image: url('fondo_chat.png'); background-size: cover;"
+                Elevation="0">
+                    @foreach (var msg in
+                  _activeChannel.Messages
+                  .Where(m => m.Text.ToLower().Contains(_searchText.ToLower()))
+                  .OrderBy(m => m.Timestamp).DistinctBy(m => m.Id)
+                  )
+                    {
+                        if (msg.IsAction)
+                        {
+                            <div class="d-flex flex-row align-start my-3">
+                                <MudAvatar Size="Size.Medium"
+                                Style="@($"color: white; background-color: {GetUserColor(msg.User.UserName)}")">
+                                    <MudIcon Color="Color.Secondary" Icon="@Icons.Material.Filled.Notifications" />
+                                </MudAvatar>
+                                <div Class="d-flex flex-column" style="max-width:50%;">
+                                    <div Class="d-flex flex-row align-end ml-2 gap-2">
+                                        <MudText Typo="Typo.subtitle2">@msg.User.UserName</MudText>
+                                        <MudText Class="timestamp" Typo="Typo.caption">@ConvertToClientTimeZone(msg.Timestamp)</MudText>
+                                    </div>
+                                    <MudPaper Class="mud-border-primary px-4 py-2 rounded-xl"
+                                    Style="overflow-wrap: break-word; width: 100%;" Elevation="1">
+                                        <MudText Typo="Typo.body2">@msg.Text</MudText>
+                                    </MudPaper>
+                                </div>
+                            </div>
+                        }
+                        else if (msg.User.UserName.Equals(_user.UserName))
+                        {
+                            <div class="d-flex flex-row justify-end my-3">
+                                <div Class="d-flex flex-column" style="max-width:50%;">
+                                    <div Class="d-flex flex-row align-self-end ml-2">
+                                        <MudText Typo="Typo.caption">@ConvertToClientTimeZone(msg.Timestamp)</MudText>
+                                    </div>
+                                    <MudPaper Class="mud-border-primary d-flex flex-column px-4 py-2 rounded-xl gap-0"
+                                    Style="overflow-wrap: break-word; width: 100%;" Elevation="1">
+                                        <MudText Typo="Typo.body2" Class="mr-6">@msg.Text</MudText>
+                                        @if (msg.State == MessageState.Received)
+                                        {
+                                            <MudImage Class="align-self-end"
+                                            Src="/check_check_message.png"
+                                            Style="margin-left:auto;" Width="15" />
+                                        }
+                                        @if (msg.State == MessageState.Send)
+                                        {
+                                            <MudImage Class="align-self-end"
+                                            Src="/check_message.png"
+                                            Style="margin-left:auto;" Width="15" />
+                                        }
+                                        @if (msg.State == MessageState.Read)
+                                        {
+                                            <MudImage Class="align-self-end"
+                                            Src="/received_message.png"
+                                            Style="margin-left:auto;" Width="15" />
+                                        }
+
+                                    </MudPaper>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-row align-start my-3">
+                                <MudAvatar Size="Size.Medium"
+                                Style="@($"color: white; background-color: {GetUserColor(msg.User.UserName)}")">
+                                    @msg.User.UserName.Substring(0, 1).ToUpper()
+                                </MudAvatar>
+                                <div Class="d-flex flex-column" style="max-width:50%;">
+                                    <div Class="d-flex flex-row align-end ml-2 gap-2">
+                                        <MudText Typo="Typo.subtitle2">@msg.User.UserName</MudText>
+                                        <MudText Class="timestamp" Typo="Typo.caption">@ConvertToClientTimeZone(msg.Timestamp)</MudText>
+                                    </div>
+                                    <MudPaper Class="mud-border-primary px-4 py-2 rounded-xl"
+                                    Style="overflow-wrap: break-word; width: 100%;" Elevation="1">
+                                        <MudText Typo="Typo.body2">@msg.Text</MudText>
+                                    </MudPaper>
+                                </div>
+                            </div>
+                        }
+                    }
+                </MudPaper>
+            }
+        </MudPaper>
+        <EditForm Class="mt-2 rounded-lg" Model="@this" OnValidSubmit="OnSubmit">
+            <MudTextField @bind-Value="_message"
+            Label="@(_activeChannel.Id.Equals(string.Empty) ? string.Empty : "Escribe tu mensaje")"
+            Disabled="@(_loadingContacts || _loadingChat || _activeChannel.Id.Equals(string.Empty) || _userDeleted)"
+            Adornment="Adornment.End"
+            AdornmentIcon="@Icons.Material.Filled.Send"
+            OnAdornmentClick="OnSubmit"
+            Variant="Variant.Outlined" />
+        </EditForm>
+    </MudItem>
+</MudGrid>
+
+<script>
+    function scrollToBottom(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+    element.scrollTop = element.scrollHeight;
+    }
+    }
+</script>
+
+@code {
+    private bool _showUsers = false;
+    private bool _loadingContacts = false;
+    private bool _loadingChat = false;
+    private bool _userDeleted = false;
+    private string _message = string.Empty;
+    private string ClientTimezone = string.Empty;
+    private Guid _keyList = Guid.NewGuid();
+    private Guid _keySearch = Guid.NewGuid();
+
+    private MessagingChannelDto _activeChannel = new();
+    private ApplicationUserDto _user = new();
+    private List<MessagingChannelDto> _channels = new();
+    private string _searchText = string.Empty;
+
+    private HttpClient _httpClient = new();
+
+    private Dictionary<string, string> _userColors = new();
+    private List<string> _colors = new();
+    private static readonly Random _random = new();
+
+    private void GenerateColors()
+    {
+        _colors = Enumerable.Range(0, 100).Select(_ =>
+        {
+            int r = _random.Next(50, 256);
+            int g = _random.Next(50, 256);
+            int b = _random.Next(50, 256);
+
+            return $"#{r:X2}{g:X2}{b:X2}";
+        }).ToList();
+    }
+
+    private string GetUserColor(string userName)
+    {
+        if (!_userColors.ContainsKey(userName))
+        {
+            _userColors[userName] = _colors[_random.Next(_colors.Count)];
+        }
+
+        return _userColors[userName];
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await JSRuntime.InvokeVoidAsync("scrollToBottom", "chat");
+    }
+
+    private async Task<string> LoadUserAndToken()
+    {
+        var token = await LocalStorage.GetItemAsync<string>("token") ?? string.Empty;
+        var handler = new JwtSecurityTokenHandler();
+        var jwtToken = handler.ReadJwtToken(token);
+        var username = jwtToken.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.UniqueName)?.Value ?? string.Empty;
+
+        _httpClient = HttpClientFactory.CreateClient("CustomHttpClient");
+        var response = await _httpClient.GetAsync($"api/Users/username/{username}/");
+
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<ApplicationUserDto>() ?? new ApplicationUserDto();
+
+            _user.UserName = result.UserName;
+            _user.Name = result.Name;
+            _user.LastName = result.LastName;
+            _user.Email = result.Email;
+            _user.Id = result.Id;
+            _user.IsDeleted = result.IsDeleted;
+            _user.Roles = result.Roles;
+            _user.Products = result.Products;
+        }
+
+        return token;
+    }
+
+    private string ConvertToClientTimeZone(DateTime utcDate)
+    {
+        TimeZoneInfo tz = TimeZoneInfo.FindSystemTimeZoneById(ClientTimezone);
+        DateTime clientTime = TimeZoneInfo.ConvertTimeFromUtc(utcDate, tz);
+        return clientTime.ToString("dd/MM/yyyy HH:mm");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loadingContacts = true;
+        GenerateColors();
+
+        ClientTimezone = await JSRuntime.InvokeAsync<string>("getClientTimezone");
+
+        var token = await LoadUserAndToken();
+
+        if (token != null && !_user.Id.Equals(string.Empty))
+        {
+            SignalRService.LoadChannels(ReceiveChannels);
+            SignalRService.LoadChannel(ReceiveChannel);
+            SignalRService.LoadUnreadMessages(ReceiveUnreadMessage);
+            SignalRService.LoadMessages(ReceiveMessage);
+            SignalRService.LoadIsReadMessage(ReceiveIsReadMessage);
+
+            await SignalRService.GetChannels();
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/not_found");
+        }
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (!e.Location.Contains("messaging"))
+        {
+            SignalRService.ActiveChannel = new();
+            SignalRService.UnsubscribeAll();
+        }
+        else
+        {
+            var uri = new Uri(e.Location);
+            var query = uri.Query;
+            var parameters = QueryHelpers.ParseQuery(query);
+
+            if (parameters.TryGetValue("channel", out var channel))
+            {
+                var existsChannel = _channels.FirstOrDefault(ch =>
+                    string.Equals(ch.Name, channel, StringComparison.OrdinalIgnoreCase));
+
+                if (existsChannel != null)
+                {
+                    existsChannel.Messages.Clear();
+                    await LoadChannel(existsChannel);
+                }
+                _keySearch = Guid.NewGuid();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    private async Task DisposeHubConnectionAsync()
+    {
+        await SignalRService.DisposeHubConnection();
+    }
+
+    private async Task OnUserSend(ApplicationUserDto user)
+    {
+        var existsChannel = _channels.FirstOrDefault(ch => ch.Name.Equals(user.UserName ?? string.Empty));
+
+        if (existsChannel == null)
+        {
+            await SignalRService.JoinPrivateChannel(user.Id);
+        }
+        else
+        {
+            _activeChannel = existsChannel;
+            SignalRService.ActiveChannel = existsChannel;
+            StateHasChanged();
+            await LoadChannel(existsChannel);
+        }
+    }
+
+    private async void ReceiveChannels(List<MessagingChannelDto> channels)
+    {
+        _channels.AddRange(channels);
+
+        ReceiveUnreadMessage(SignalRService.UnreadMessages);
+
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+
+        if (QueryHelpers.ParseQuery(uri.Query)
+            .TryGetValue("channel", out var channel))
+        {
+            var existsChannel = _channels.FirstOrDefault(ch =>
+                string.Equals(ch.Name, channel, StringComparison.OrdinalIgnoreCase));
+
+            if (existsChannel != null)
+            {
+                existsChannel.Messages.Clear();
+                await LoadChannel(existsChannel);
+            }
+        }
+
+        _keySearch = Guid.NewGuid();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void ReceiveChannel(MessagingChannelDto channel)
+    {
+        _channels.Add(channel);
+        _activeChannel = channel;
+        SignalRService.ActiveChannel = channel;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void ReceiveUnreadMessage(List<MessageDto> unreadMessages)
+    {
+        var groupedMessages = unreadMessages.GroupBy(m => m.MessagingChannel.Id);
+
+        foreach (var group in groupedMessages)
+        {
+            var channelId = group.Key;
+            var messages = group.ToList();
+
+            var existingChannel = _channels.FirstOrDefault(c => c.Id.ToLower().Equals(channelId.ToLower()));
+
+            if (existingChannel != null)
+            {
+                foreach (var msg in messages)
+                {
+                    var existsMessage = existingChannel.Messages
+                            .FirstOrDefault(m => m.Timestamp == msg.Timestamp && m.State == MessageState.Send);
+
+                    if (existsMessage != null)
+                    {
+                        existsMessage.Id = msg.Id;
+                        existsMessage.User = msg.User;
+                        existsMessage.Text = msg.Text;
+                        existsMessage.MessagingChannel = msg.MessagingChannel;
+                        existsMessage.Timestamp = msg.Timestamp;
+                        existsMessage.State = msg.State;
+                    }
+                    else
+                    {
+                        existingChannel.Messages.Add(msg);
+                        if (_activeChannel.Id.Equals(existingChannel.Id))
+                        {
+                            msg.State = MessageState.Read;
+
+                            SignalRService.RemoveUnreadMessage(msg.Id);
+
+                            await SignalRService.MarkMessagesAsRead(new List<Guid> { msg.Id }, _activeChannel.Id);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                var message = messages.FirstOrDefault();
+
+                if (message != null)
+                {
+                    _channels.Add(new MessagingChannelDto
+                        {
+                            Id = message.MessagingChannel.Id,
+                            IsPrivate = message.MessagingChannel.IsPrivate,
+                            Name = message.MessagingChannel.Name,
+                            Messages = messages,
+                        });
+                }
+            }
+        }
+
+        _loadingContacts = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadChannel(MessagingChannelDto channel)
+    {
+        _userDeleted = false;
+        _loadingChat = true;
+        _showUsers = false;
+
+        if (_activeChannel != null)
+        {
+            await SignalRService.LeaveChannel(_activeChannel.Id);
+        }
+
+        _activeChannel?.Messages.Clear();
+        _searchText = string.Empty;
+        _activeChannel = channel;
+        SignalRService.ActiveChannel = channel;
+
+        var user = _activeChannel.Users.FirstOrDefault(u => !u.UserName.Equals(_user.UserName));
+
+        if (user != null && user.IsDeleted)
+        {
+            _userDeleted = true;
+        }
+
+        StateHasChanged();
+
+        await SignalRService.JoinChannel(channel.Id);
+    }
+
+    private async void ReceiveMessage(List<MessageDto> messages)
+    {
+        foreach (var msg in messages)
+        {
+            var existsMsg = _activeChannel.Messages.FirstOrDefault(m => m.Id.Equals(msg.Id));
+
+            if (existsMsg != null)
+            {
+                existsMsg.State = MessageState.Read;
+            }
+            else
+            {
+                var newMsg = new MessageDto(msg);
+
+                newMsg.State = newMsg.User.UserName.Equals(_user.UserName) ? newMsg.State : MessageState.Read;
+
+                _activeChannel.Messages.Add(newMsg);
+            }
+        }
+        _loadingChat = false;
+
+        var messagesReaded = _activeChannel.Messages
+            .Where(m => m.State == MessageState.Read).Select(m => m.Id)
+            .Except(messages.Where(m => m.State == MessageState.Read).Select(m => m.Id))
+            .ToList();
+
+        foreach (var messageId in messagesReaded)
+        {
+            SignalRService.RemoveUnreadMessage(messageId);
+        }
+
+        await InvokeAsync(StateHasChanged);
+
+        _ = SignalRService.MarkMessagesAsRead(messagesReaded, _activeChannel.Id);
+    }
+
+    private async void ReceiveIsReadMessage(Guid messageId)
+    {
+        var message = _channels
+            .SelectMany(ch => ch.Messages)
+            .FirstOrDefault(m => m.Id.Equals(messageId));
+
+        if (message != null && message.User.Id.Equals(_user.Id))
+        {
+            message.State = MessageState.Read;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnSubmit()
+    {
+        if (_activeChannel != null && _message != null && _message.Count() > 0)
+        {
+            var message = new MessageDto
+                {
+                    Id = Guid.NewGuid(),
+                    Text = _message,
+                    Timestamp = DateTime.UtcNow,
+                    State = MessageState.Send,
+                    User = new ApplicationUserDto
+                    {
+                        Name = _user.Name,
+                        LastName = _user.LastName,
+                        Email = _user.Email,
+                        UserName = _user.UserName,
+                    },
+                };
+
+            _activeChannel.Messages.Add(message);
+            _message = string.Empty;
+            _searchText = string.Empty;
+            _keyList = Guid.NewGuid();
+
+            StateHasChanged();
+
+            await SignalRService.SendMessageToChannel(_activeChannel.Id, message);
+        }
+    }
+
+    private void SearchMessage(string searchText)
+    {
+        _searchText = searchText;
+        StateHasChanged();
+    }
+
+    private async Task OnAddGroup()
+    {
+        DialogParameters parameters = new DialogParameters
+        {
+            { "CallBackSubmit", new EventCallback<(string, List<ApplicationUserDto>)>(this, OnAddGroupSubmit)}
+        };
+
+        DialogOptions options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+        var dialog = await DialogService.ShowAsync<AddGroupDialog>("", parameters, options);
+    }
+
+    private async Task OnAddUserGroup()
+    {
+        DialogParameters parameters = new DialogParameters
+        {
+            { "CallBackSubmit", new EventCallback<(MessagingChannelDto, List<ApplicationUserDto>)>(this, OnAddUserGroupSubmit)} ,
+            { "MessagingChannel", _activeChannel },
+            { "ColorMessagingChannel", GetUserColor(_activeChannel.Name) }
+        };
+
+        DialogOptions options = new() { NoHeader = true, CloseOnEscapeKey = false, BackdropClick = false };
+        var dialog = await DialogService.ShowAsync<AddUserGroupDialog>("", parameters, options);
+    }
+
+    private async Task OnAddGroupSubmit((string channelName, List<ApplicationUserDto> users) channel)
+    {
+        var name = channel.channelName;
+        var users = channel.users;
+
+        await SignalRService.CreateChannel(name, users);
+    }
+
+    private async Task OnAddUserGroupSubmit((MessagingChannelDto channel, List<ApplicationUserDto> users) channel)
+    {
+        var channelId = Guid.Parse(channel.channel.Id);
+        var users = channel.users;
+
+        channel.channel.Users.AddRange(users);
+
+        await SignalRService.AddUsersToChannel(channelId, users);
+    }
+}
